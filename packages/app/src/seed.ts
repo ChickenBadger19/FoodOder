@@ -2,6 +2,7 @@ import { parseIngredient, resolveLines, type Item, type Member, type Recipe, typ
 import { Store, newId } from './store.js';
 import { CATALOGUE_EXTRA, EXTRA_ALIASES } from './data/catalogue.js';
 import LIBRARY from './data/recipes.json' with { type: 'json' };
+import GENERATED_SUBS from './data/substitutions.json' with { type: 'json' };
 
 type I = Omit<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'> & Partial<Pick<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'>>;
 const food = (i: I): Item => ({ aliases: [], category: 'food', allergens: [], isStaple: false, ...i });
@@ -77,6 +78,7 @@ export const SUBSTITUTIONS: Substitution[] = [
   { itemId: 'beef-stock', allergen: 'gluten', substituteItemId: 'gf-beef-stock' },
   { itemId: 'chicken-stock', allergen: 'gluten', substituteItemId: 'gf-chicken-stock' },
   { itemId: 'soy-sauce', allergen: 'gluten', substituteItemId: 'tamari' },
+  ...(GENERATED_SUBS as Substitution[]),
 ];
 
 /** Every item the app knows at seed time: the hand-written set plus the generated catalogue. */
@@ -153,7 +155,7 @@ export const STOCK: StockItem[] = [
  * list, preferences) only with `demo`, otherwise the app starts on the onboarding flow.
  */
 /** Bump when the catalogue, substitutions or recipe library change; existing databases are topped up on next start. */
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
 
 export async function seed(store: Store, opts: { demo?: boolean } = {}): Promise<void> {
   await store.batch(() => seedRows(store, opts));

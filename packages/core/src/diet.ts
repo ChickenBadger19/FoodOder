@@ -98,7 +98,7 @@ export function applySubstitutions(
         }
       }
     }
-    return { ...line, swapReason: `contains ${violations.join(', ')} - no substitute known` };
+    return { ...line, swapReason: `contains ${violations.join(', ')}; no ${violations[0]}-free swap in the catalogue yet` };
   });
 }
 

@@ -48,6 +48,24 @@ describe('recipe library', () => {
     else expect(r.candidates.length).toBeGreaterThan(1);
   });
 
+  it('swaps gluten and dairy ingredients to free-from versions for a strict eater', async () => {
+    const recipes = await store.recipes();
+    const burgers = recipes.find(r => r.ingredients.some(l => l.itemId === 'burger-buns'))!;
+    expect(burgers).toBeTruthy();
+    const { body } = await json('POST', `/api/recipes/${burgers.id}/preview`, { servings: 4, eaterIds: ['jeff', 'alex', 'sam'] });
+    const buns = body.lines.find((l: any) => l.swappedFrom === 'burger buns');
+    expect(buns?.itemId).toBe('gf-burger-buns');
+    expect(body.lines.some((l: any) => /no .*-free swap/.test(l.swapReason ?? ''))).toBe(false);
+    // Dairy: a dairy-free member gets oat milk and a dairy-free spread.
+    const put = await app.request('/api/household/members/dee', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Dee', eatsByDefault: true, constraints: [{ kind: 'dairy_free', strictness: 'strict' }] }) });
+    expect(put.status).toBe(200);
+    const mac = recipes.find(r => r.ingredients.some(l => l.itemId === 'milk') && r.ingredients.some(l => l.itemId === 'butter'))!;
+    const p2 = await json('POST', `/api/recipes/${mac.id}/preview`, { servings: 4, eaterIds: ['jeff', 'dee'] });
+    expect(p2.body.lines.find((l: any) => l.swappedFrom === 'whole milk')?.itemId).toBe('oat-milk');
+    expect(p2.body.lines.find((l: any) => l.swappedFrom === 'butter')?.itemId).toBe('dairy-free-spread');
+    await app.request('/api/household/members/dee', { method: 'DELETE' });
+  });
+
   it('builds a basket for a library recipe with mostly matched products', async () => {
     const recipes = await store.recipes();
     const sb = recipes.find(r => r.id === 'spaghetti-bolognese') ?? recipes.find(r => r.name.toLowerCase().includes('bolognese'))!;

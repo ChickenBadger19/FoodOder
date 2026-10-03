@@ -19,20 +19,39 @@ const DIETARY = new Set(['gluten_free', 'dairy_free', 'nut_free', 'vegetarian', 
 type RawProduct = { name: string; price: number; packQty: number; packUnit: string; packCount?: number | null; dietary?: string[]; allergens?: string[]; mayContain?: string[]; ownBrand?: boolean; brand?: string | null };
 type RawItem = { id: string; name: string; aliases?: string[]; category?: string; defaultUnit: string; allergens?: string[]; isStaple?: boolean; unitWeightG?: number | null; densityGPerMl?: number | null; products?: RawProduct[] };
 type RawAlias = { aliasOf: string; aliases: string[] };
-
 const items = new Map<string, Item>();
 const aliases: Record<string, string[]> = {};
 const products: Omit<Product, 'retailer'>[] = [];
 const problems: string[] = [];
+let pn = 0;
+type Sub = { itemId: string; allergen: string; substituteItemId: string };
+const manualSubs: Sub[] = [];
+const pendingProducts: { productsFor: string; products: RawProduct[] }[] = [];
+function addProduct(p: RawProduct, owner: string) {
+  if (!p?.name || !(p.price > 0) || !(p.packQty > 0) || !UNITS.has(p.packUnit as Unit)) { problems.push(`bad product for ${owner}`); return; }
+  const prod: Omit<Product, 'retailer'> = {
+    id: `g${++pn}`, name: p.name, price: Math.round(p.price * 100) / 100, packQty: p.packQty, packUnit: p.packUnit as Unit,
+    dietary: (p.dietary ?? []).filter(d => DIETARY.has(d)) as Product['dietary'],
+    allergens: (p.allergens ?? []).filter(a => ALLERGENS.has(a)) as Product['allergens'],
+    mayContain: (p.mayContain ?? []).filter(a => ALLERGENS.has(a)) as Product['allergens'],
+    inStock: true, ownBrand: p.ownBrand !== false,
+  };
+  if (p.packCount && p.packCount > 1) prod.packCount = p.packCount;
+  if (p.brand) prod.brand = p.brand;
+  products.push(prod);
+}
+
+
 const existingIds = new Set(ITEMS.map(i => i.id));
 const seenNames = new Map<string, string>();
 for (const i of ITEMS) { seenNames.set(normaliseName(i.name), i.id); for (const a of i.aliases) seenNames.set(normaliseName(a), i.id); }
-let pn = 0;
 
 for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
   let arr: (RawItem | RawAlias)[];
   try { arr = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) { problems.push(`${f}: invalid JSON ${(e as Error).message}`); continue; }
   for (const e of arr) {
+    if ('substitute' in e) { manualSubs.push((e as { substitute: Sub }).substitute); continue; }
+    if ('productsFor' in e) { pendingProducts.push(e as { productsFor: string; products: RawProduct[] }); continue; }
     if ('aliasOf' in e) {
       if (!existingIds.has(e.aliasOf) && !items.has(e.aliasOf)) { problems.push(`${f}: aliasOf unknown item ${e.aliasOf}`); continue; }
       const target = items.get(e.aliasOf);
@@ -63,19 +82,7 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
     seenNames.set(normaliseName(item.name), id);
     for (const a of r.aliases ?? []) { const n = normaliseName(a); if (!seenNames.has(n) && n !== normaliseName(item.name)) { seenNames.set(n, id); item.aliases.push(a); } }
     items.set(id, item);
-    for (const p of r.products ?? []) {
-      if (!p?.name || !(p.price > 0) || !(p.packQty > 0) || !UNITS.has(p.packUnit as Unit)) { problems.push(`${f}: bad product for ${id}`); continue; }
-      const prod: Omit<Product, 'retailer'> = {
-        id: `g${++pn}`, name: p.name, price: Math.round(p.price * 100) / 100, packQty: p.packQty, packUnit: p.packUnit as Unit,
-        dietary: (p.dietary ?? []).filter(d => DIETARY.has(d)) as Product['dietary'],
-        allergens: (p.allergens ?? []).filter(a => ALLERGENS.has(a)) as Product['allergens'],
-        mayContain: (p.mayContain ?? []).filter(a => ALLERGENS.has(a)) as Product['allergens'],
-        inStock: true, ownBrand: p.ownBrand !== false,
-      };
-      if (p.packCount && p.packCount > 1) prod.packCount = p.packCount;
-      if (p.brand) prod.brand = p.brand;
-      products.push(prod);
-    }
+    for (const p of r.products ?? []) addProduct(p, id);
   }
 }
 
@@ -91,6 +98,34 @@ for (const it of [...items.values()]) {
     problems.push(`folded ${it.id} into ${hit.id}`);
   }
 }
+for (const pp of pendingProducts) {
+  if (!items.has(pp.productsFor) && !existingIds.has(pp.productsFor)) { problems.push(`productsFor unknown item ${pp.productsFor}`); continue; }
+  for (const p of pp.products) addProduct(p, pp.productsFor);
+}
+
+// Gluten-free twins: an item that contains gluten and has a verified gluten-free product gets a
+// "gluten-free <name>" item and a substitution, so the recipe preview can show the swap.
+const subs: Sub[] = [...manualSubs];
+const hasSub = (id: string, allergen: string) => subs.some(x => x.itemId === id && x.allergen === allergen);
+const words = (n: string) => normaliseName(n).split(' ').filter(w => w.length > 2);
+for (const it of [...items.values()]) {
+  if (!it.allergens.includes('gluten') || hasSub(it.id, 'gluten') || it.id.startsWith('gf-')) continue;
+  const ws = words(it.name);
+  const gfProduct = products.find(p => p.dietary.includes('gluten_free') && ws.every(w => normaliseName(p.name).split(' ').some(pw => pw === w || pw.startsWith(w))));
+  if (!gfProduct) continue;
+  const twinId = `gf-${it.id}`;
+  if (!items.has(twinId) && !existingIds.has(twinId)) {
+    const twin: Item = { ...it, id: twinId, name: `gluten-free ${it.name}`, aliases: [`free from ${it.name}`, `gf ${it.name}`], allergens: it.allergens.filter(a => a !== 'gluten'), isStaple: false };
+    items.set(twinId, twin);
+    seenNames.set(normaliseName(twin.name), twinId);
+  }
+  subs.push({ itemId: it.id, allergen: 'gluten', substituteItemId: twinId });
+}
+for (const sub of subs) {
+  for (const id of [sub.itemId, sub.substituteItemId]) if (!items.has(id) && !existingIds.has(id)) problems.push(`substitution refers to unknown item ${id}`);
+}
+fs.writeFileSync(path.join(path.resolve(path.dirname(new URL(import.meta.url).pathname), '..'), 'src/data/substitutions.json'), JSON.stringify(subs));
+
 const out = [...items.values()].sort((a, b) => a.id.localeCompare(b.id));
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 fs.writeFileSync(path.join(root, 'src/data/catalogue.json'), JSON.stringify(out));
@@ -98,5 +133,5 @@ fs.writeFileSync(path.join(root, 'src/data/aliases.json'), JSON.stringify(aliase
 const retailersData = path.resolve(root, '../retailers/src/data');
 fs.mkdirSync(retailersData, { recursive: true });
 fs.writeFileSync(path.join(retailersData, 'products.json'), JSON.stringify(products));
-console.log(`items ${out.length}; aliases for existing items ${Object.values(aliases).flat().length}; products ${products.length}; problems ${problems.length}`);
+console.log(`items ${out.length}; aliases for existing items ${Object.values(aliases).flat().length}; products ${products.length}; substitutions ${subs.length} (${subs.filter(x => x.allergen === 'gluten').length} gluten, ${subs.filter(x => x.allergen === 'dairy').length} dairy, ${subs.filter(x => x.allergen === 'egg').length} egg); problems ${problems.length}`);
 if (problems.length) console.log('  ' + problems.slice(0, 30).join('\n  '));

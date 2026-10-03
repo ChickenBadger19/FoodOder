@@ -53,7 +53,7 @@ describe('dietary constraints', () => {
     const a = activeConstraints([sam]);
     const lines = applySubstitutions(lasagne.ingredients, items, [{ itemId: 'pasta', allergen: 'gluten', substituteItemId: 'gf-pasta' }], a);
     expect(lines[1]).toMatchObject({ itemId: 'gf-pasta', swappedFrom: 'lasagne sheets' });
-    expect(lines[3]!.swapReason).toContain('no substitute');
+    expect(lines[3]!.swapReason).toContain('no gluten-free swap');
     expect(lines[0]!.swappedFrom).toBeUndefined();
   });
 });
