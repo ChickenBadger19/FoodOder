@@ -1,0 +1,37 @@
+# Deploys the PWA + API to Cloudflare Workers (D1 + Workers Assets).
+# Needs one repository secret: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit, D1: Edit, Account Settings: Read).
+# Optional: CLOUDFLARE_ACCOUNT_ID if the token can see more than one account.
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main, claude/cool-heisenberg-kddg9q]
+    paths-ignore: ['docs/**', 'reports/**', '*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
+      - run: pnpm --filter @foododer/web build
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/worker
+          packageManager: pnpm
+          command: deploy
