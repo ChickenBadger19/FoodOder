@@ -55,6 +55,11 @@ pnpm --filter @foodify/worker db:create     # prints a database_id: paste it int
 pnpm --filter @foodify/worker deploy
 ```
 
+The deployed app sits behind HTTP Basic auth: `BASIC_AUTH_USER` and `BASIC_AUTH_SHA256` in `wrangler.toml`,
+where the second is the hex SHA-256 of `user:password` (`printf '%s' 'admin:yourpassword' | sha256sum`), so the
+password itself is never stored. Remove both lines to make the app public. `/api/health` stays open for checks.
+The Node host honours the same two environment variables.
+
 Tables are created and the catalogue seeded on the first request. `FOODIFY_DEMO` in `wrangler.toml`
 controls whether the demo household is seeded ("1") or the app starts on the set-up flow (anything else).
 For recipe generation add the key as a secret: `pnpm --filter @foodify/worker exec wrangler secret put ANTHROPIC_API_KEY`.

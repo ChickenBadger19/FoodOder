@@ -56,3 +56,27 @@ describe('first run and onboarding', () => {
     expect(mince.swapReason).toMatch(/contains meat/);
   });
 });
+
+describe('HTTP Basic auth', () => {
+  // sha256 of "admin:secret"
+  const auth = { user: 'admin', sha256: '' };
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let close: () => void;
+  beforeAll(async () => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('admin:secret'));
+    auth.sha256 = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    ({ app, close } = await buildApp({ dbFile: ':memory:', demo: true, auth } satisfies BuildOptions));
+  });
+  afterAll(() => close());
+
+  it('refuses the app and API without credentials, keeps the health check open', async () => {
+    expect((await app.request('/api/state')).status).toBe(401);
+    expect((await app.request('/')).status).toBe(401);
+    expect((await app.request('/api/health')).status).toBe(200);
+    const bad = await app.request('/api/state', { headers: { authorization: 'Basic ' + btoa('admin:wrong') } });
+    expect(bad.status).toBe(401);
+    const ok = await app.request('/api/state', { headers: { authorization: 'Basic ' + btoa('admin:secret') } });
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).members.length).toBe(3);
+  });
+});

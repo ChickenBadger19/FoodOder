@@ -1,4 +1,4 @@
-import { createApp, prepareStore, Store, type SqlDriver } from '@foodify/app';
+import { createApp, prepareStore, basicAuthFromEnv, Store, type SqlDriver } from '@foodify/app';
 
 export interface Env {
   DB: D1Database;
@@ -6,6 +6,9 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   /** "1" seeds the demo household on first run; anything else seeds the catalogue only. */
   FOODIFY_DEMO?: string;
+  /** HTTP Basic auth over the whole app: username and hex SHA-256 of "user:password". */
+  BASIC_AUTH_USER?: string;
+  BASIC_AUTH_SHA256?: string;
 }
 
 /** Cloudflare D1 behind the async SqlDriver interface the shared Store expects. */
@@ -37,7 +40,10 @@ function appFor(env: Env) {
     ready = (async () => {
       const store = new Store(d1Driver(env.DB));
       await prepareStore(store, { demo: env.FOODIFY_DEMO === '1' });
-      return createApp({ store, anthropicApiKey: env.ANTHROPIC_API_KEY });
+      const app = createApp({ store, anthropicApiKey: env.ANTHROPIC_API_KEY, auth: basicAuthFromEnv(env) });
+      // Static files (the PWA) are served here, after the auth guard, instead of by the assets layer directly.
+      app.get('*', c => env.ASSETS.fetch(c.req.raw));
+      return app;
     })();
     ready.catch(() => { ready = undefined; });
   }

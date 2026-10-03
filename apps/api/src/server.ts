@@ -3,8 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Hono } from 'hono';
-import { createApp, prepareStore, Store, type SqlDriver } from '@foodify/app';
+import { createApp, prepareStore, basicAuthFromEnv, Store, type SqlDriver, type BasicAuthConfig } from '@foodify/app';
 import type { Retailer } from '@foodify/retailers';
 
 const DB_FILE = process.env.FOODIFY_DB ?? 'data/foodify.sqlite';
@@ -26,17 +25,17 @@ export function sqliteDriver(file: string): SqlDriver & { close(): void } {
   };
 }
 
-export interface BuildOptions { dbFile?: string; retailer?: Retailer; demo?: boolean; webDist?: string }
+export interface BuildOptions { dbFile?: string; retailer?: Retailer; demo?: boolean; webDist?: string; auth?: BasicAuthConfig | null }
 
 /** The API plus, when a built PWA is present, the static files with an SPA fallback for non-API routes. */
 export async function buildApp(opts: BuildOptions = {}) {
   const driver = sqliteDriver(opts.dbFile ?? DB_FILE);
   const store = new Store(driver);
   await prepareStore(store, { demo: opts.demo ?? process.env.FOODIFY_DEMO === '1' });
-  const api = createApp({ store, retailer: opts.retailer, anthropicApiKey: process.env.ANTHROPIC_API_KEY });
+  const auth = opts.auth === null ? undefined : opts.auth ?? basicAuthFromEnv(process.env);
+  const api = createApp({ store, retailer: opts.retailer, anthropicApiKey: process.env.ANTHROPIC_API_KEY, auth });
 
-  const app = new Hono();
-  app.route('/', api);
+  const app = api;
 
   const webDist = opts.webDist ?? path.resolve(process.cwd(), '../web/dist');
   if (fs.existsSync(webDist)) {

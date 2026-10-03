@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
 import { z, ZodError } from 'zod';
 import {
   activeConstraints, deductCooked, parseAsk, parseIngredient, resolveItem, resolveLines, scaleRecipe, applySubstitutions, formatQty, servingsFor,
@@ -13,10 +14,13 @@ import { seed, seedCatalogue, SEED_VERSION } from './seed.js';
 import { applyLineChange, appendListLine, promoteAdhocItems, proposeOrder, type DraftOrder } from './services/propose.js';
 import { dateForDay, weekRange } from './services/dates.js';
 import { generateRecipe, llmAvailable } from './llm.js';
+import { basicAuthGuard, type BasicAuthConfig } from './auth.js';
 
 export interface AppOptions {
   store: Store;
   retailer?: Retailer;
+  /** When set, every route except /api/health requires HTTP Basic auth. */
+  auth?: BasicAuthConfig;
   /** Anthropic API key for recipe generation. Optional: without it, only saved recipes resolve by name. */
   anthropicApiKey?: string;
 }
@@ -33,12 +37,15 @@ export async function prepareStore(store: Store, opts: { demo?: boolean } = {}):
  * The Foodify API as a Hono app. Runtime-neutral: the host (Node or Cloudflare Workers) supplies the
  * database driver and serves the PWA's static files; everything under /api lives here.
  */
-export function createApp({ store, retailer: retailerOpt, anthropicApiKey }: AppOptions) {
+export function createApp({ store, retailer: retailerOpt, anthropicApiKey, auth }: AppOptions) {
   const retailer: Retailer = retailerOpt ?? new MockRetailer('Tesco (mock)');
   const retailers = new Map<string, Retailer>([[retailer.id, retailer]]);
   const app = new Hono();
+  app.get('/api/health', async c => c.json({ ok: true, llm: llmAvailable(anthropicApiKey), seedVersion: await store.setting<number>('seedVersion', 1), auth: !!auth }));
+  if (auth) app.use('*', basicAuthGuard(auth));
   app.use('/api/*', cors());
   app.onError((err, c) => {
+    if (err instanceof HTTPException) return err.getResponse();
     if (err instanceof ZodError) return c.json({ error: 'invalid request', issues: err.issues }, 400);
     console.error(err);
     return c.json({ error: err.message ?? 'internal error' }, 500);

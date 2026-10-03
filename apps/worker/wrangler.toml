@@ -18,7 +18,11 @@ database_id = "d3053023-3b4b-47b0-abe4-016d010c20d9"
 [assets]
 directory = "../web/dist"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+run_worker_first = true
 
 [vars]
 FOODIFY_DEMO = "1"
+# HTTP Basic auth for the whole app. The password is not stored: BASIC_AUTH_SHA256 is the hex SHA-256 of "user:password"
+# (printf '%s' 'admin:yourpassword' | sha256sum). Remove both lines to make the app public.
+BASIC_AUTH_USER = "admin"
+BASIC_AUTH_SHA256 = "0dfa6519163e6c2f2c4fa7b6f525d183674eb75b5971ebe45b057959ee3d040c"

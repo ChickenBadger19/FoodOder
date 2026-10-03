@@ -49,7 +49,9 @@ jobs:
       - name: Smoke test the deployed Worker
         run: |
           URL=https://foodify.jeff-cousens.workers.dev
-          echo "GET $URL/"; curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' "$URL/"
-          echo "GET $URL/api/state"; curl -sS -w '\nHTTP %{http_code}\n' "$URL/api/state" | head -c 1500; echo
-          echo "GET $URL/api/state (second call)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/api/state"
-          echo "recipe generation:"; curl -sS "$URL/api/state" | python3 -c 'import json,sys; print("on" if json.load(sys.stdin)["llm"] else "off (no ANTHROPIC_API_KEY secret)")'
+          echo "GET $URL/api/health"; curl -sS -w '\nHTTP %{http_code}\n' "$URL/api/health"
+          echo "GET $URL/ (expect 401: the app is behind HTTP Basic auth)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/"
+          echo "GET $URL/api/state (expect 401)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/api/state"
+          echo "GET $URL/api/state with a wrong password (expect 401)"; curl -sS -o /dev/null -w '%{http_code}\n' -u admin:wrong "$URL/api/state"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/health")" = 200
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/")" = 401
