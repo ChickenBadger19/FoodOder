@@ -82,6 +82,16 @@ describe('stock check', () => {
     expect(Math.round(gf.buyQty)).toBe(68);
   });
 
+  it('treats a tiny shortfall as in stock', () => {
+    const a = activeConstraints([jeff]);
+    const needs = aggregateNeeds([scaleRecipe(lasagne, 4)], items);
+    const stock: StockItem[] = [{ id: 's1', itemId: 'mince', qty: 490, unit: 'g', confidence: 'approx', location: 'fridge', freeFrom: [] }];
+    const sf = computeShortfall(needs, stock, items, a);
+    expect(sf.find(s => s.item?.id === 'mince')).toMatchObject({ status: 'in_stock', buyQty: 0 });
+    const strict = computeShortfall(needs, stock, items, a, { tolerance: 0 });
+    expect(strict.find(s => s.item?.id === 'mince')).toMatchObject({ status: 'partial', buyQty: 10 });
+  });
+
   it('deducts cooked quantities from stock', () => {
     const stock: StockItem[] = [
       { id: 's1', itemId: 'mince', qty: 1000, unit: 'g', confidence: 'exact', location: 'fridge', freeFrom: [] },

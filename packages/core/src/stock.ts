@@ -70,7 +70,9 @@ export interface Shortfall {
  * A stock item only covers a need if it does not violate an active constraint (e.g. ordinary pasta
  * does not cover a gluten-free pasta need when a strict gluten-free eater is present).
  */
-export function computeShortfall(needs: Need[], stock: StockItem[], items: Item[], active: ActiveConstraints): Shortfall[] {
+export function computeShortfall(needs: Need[], stock: StockItem[], items: Item[], active: ActiveConstraints, opts: { tolerance?: number } = {}): Shortfall[] {
+  /** A shortfall smaller than this fraction of the need is treated as in stock (recipes aren't that precise). */
+  const tolerance = opts.tolerance ?? 0.05;
   const byId = new Map(items.map(i => [i.id, i]));
   return needs.map(need => {
     const item = byId.get(need.itemId) ?? null;
@@ -96,7 +98,8 @@ export function computeShortfall(needs: Need[], stock: StockItem[], items: Item[
       const explicitlyOut = entries.length > 0 && have <= 0;
       return { need, item, haveQty: have, buyQty: explicitlyOut ? 1 : 0, unit: need.unit, status: explicitlyOut ? 'buy' : 'staple', covering, ignored, anyApprox };
     }
-    const buy = Math.max(0, need.qty - have);
+    let buy = Math.max(0, need.qty - have);
+    if (buy > 0 && buy <= need.qty * tolerance) buy = 0;
     const status: ShortfallStatus = buy <= 0 ? 'in_stock' : have > 0 ? 'partial' : 'buy';
     return { need, item, haveQty: have, buyQty: buy, unit: need.unit, status, covering, ignored, anyApprox };
   });
