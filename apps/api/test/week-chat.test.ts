@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { buildApp } from '../src/server.js';
-import { dateForDay, weekRange } from '../src/services/dates.js';
+import { buildApp, type BuildOptions } from '../src/server.js';
+import type { Store } from '@foododer/app';
+import { dateForDay, weekRange } from '@foododer/app';
 
 process.env.NODE_ENV = 'test';
 
@@ -18,12 +19,14 @@ describe('dates', () => {
 });
 
 describe('week planning and chat-anywhere', () => {
-  const { app, store } = buildApp({ dbFile: ':memory:', demo: true });
-  beforeAll(async () => { await app.ready(); });
-  afterAll(async () => { await app.close(); });
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let store: Store;
+  let close: () => void;
+  beforeAll(async () => { ({ app, store, close } = await buildApp({ dbFile: ':memory:', demo: true } satisfies BuildOptions)); });
+  afterAll(() => close());
   const json = async (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => {
-    const res = await app.inject({ method, url, payload: body });
-    return { status: res.statusCode, body: res.json() };
+    const res = await app.request(url, { method, headers: body === undefined ? {} : { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
   };
 
   it('resolves who is eating from the ask', async () => {
@@ -84,7 +87,7 @@ describe('week planning and chat-anywhere', () => {
     expect(line.note).toMatch(/remembered/);
     const ok = await json('POST', `/api/orders/${o.body.id}/approve`, {});
     expect(ok.status).toBe(200);
-    expect(store.item('dishwasher-salt')?.name).toBe('dishwasher salt');
-    expect(store.prefs().find(p => p.itemId === 'dishwasher-salt')?.productId).toBe('h10');
+    expect((await store.item('dishwasher-salt'))?.name).toBe('dishwasher salt');
+    expect((await store.prefs()).find(p => p.itemId === 'dishwasher-salt')?.productId).toBe('h10');
   });
 });

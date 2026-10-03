@@ -1,15 +1,18 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { buildApp } from '../src/server.js';
+import { buildApp, type BuildOptions } from '../src/server.js';
+import type { Store } from '@foododer/app';
 
 process.env.NODE_ENV = 'test';
 
 describe('first run and onboarding', () => {
-  const { app, store } = buildApp({ dbFile: ':memory:' });
-  beforeAll(async () => { await app.ready(); });
-  afterAll(async () => { await app.close(); });
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let store: Store;
+  let close: () => void;
+  beforeAll(async () => { ({ app, store, close } = await buildApp({ dbFile: ':memory:' } satisfies BuildOptions)); });
+  afterAll(() => close());
   const json = async (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => {
-    const res = await app.inject({ method, url, payload: body });
-    return { status: res.statusCode, body: res.json() };
+    const res = await app.request(url, { method, headers: body === undefined ? {} : { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
   };
 
   it('starts with catalogue and recipes but no household, and is not onboarded', async () => {
@@ -36,8 +39,8 @@ describe('first run and onboarding', () => {
     const state = await json('GET', '/api/state');
     expect(state.body.onboarded).toBe(true);
     expect(state.body.household).toMatchObject({ defaultServings: 3, ownBrandOk: false });
-    expect(store.members().find(m => m.id === 'priya')?.constraints.map(c => c.kind)).toEqual(['nut_free', 'pescatarian']);
-    expect(store.members().find(m => m.id === 'mo')?.age).toBe(3);
+    expect((await store.members()).find(m => m.id === 'priya')?.constraints.map(c => c.kind)).toEqual(['nut_free', 'pescatarian']);
+    expect((await store.members()).find(m => m.id === 'mo')?.age).toBe(3);
   });
 
   it('uses the new household in asks: "just me and mo" sizes portions by age', async () => {

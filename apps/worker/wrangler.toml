@@ -1,0 +1,24 @@
+# Cloudflare Worker: serves the built PWA from Workers Assets and the API from the same Worker, with D1 as the database.
+#
+# First deploy:
+#   pnpm --filter @foododer/web build
+#   pnpm --filter @foododer/worker db:create      # then paste the database_id it prints below
+#   pnpm --filter @foododer/worker deploy
+# Optional: wrangler secret put ANTHROPIC_API_KEY  (enables recipe generation for unknown dishes)
+name = "foododer"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "foododer"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+
+[assets]
+directory = "../web/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[vars]
+FOODODER_DEMO = "1"

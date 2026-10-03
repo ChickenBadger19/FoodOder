@@ -1,0 +1,23 @@
+{
+  "name": "@foododer/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create foododer",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "test": "echo \"tested via apps/api\""
+  },
+  "dependencies": {
+    "@foododer/app": "workspace:*",
+    "hono": "^4.9.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261001.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.42.0"
+  }
+}

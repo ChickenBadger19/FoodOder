@@ -11,3 +11,4 @@ data/
 .tesco/
 .DS_Store
 research_notes/
+.wrangler/

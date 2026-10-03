@@ -15,7 +15,7 @@ const tabs = [
   { to: '/', label: 'Ask', Icon: HouseIcon },
   { to: '/week', label: 'Week', Icon: CalendarDaysIcon },
   { to: '/basket', label: 'Basket', Icon: ShoppingCartIcon },
-  { to: '/stock', label: 'Stock', Icon: RefrigeratorIcon },
+  { to: '/pantry', label: 'Pantry', Icon: RefrigeratorIcon },
   { to: '/household', label: 'Household', Icon: UsersIcon },
 ];
 
@@ -43,7 +43,7 @@ export function App() {
           <Route path="/recipe/:id" element={<RecipeScreen />} />
           <Route path="/basket" element={<BasketScreen />} />
           <Route path="/basket/:id" element={<BasketScreen />} />
-          <Route path="/stock" element={<InventoryScreen />} />
+          <Route path="/pantry" element={<InventoryScreen />} />
           <Route path="/household" element={<HouseholdScreen />} />
         </Routes>
       </main>

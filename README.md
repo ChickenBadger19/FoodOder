@@ -40,8 +40,25 @@ FOODODER_DEMO=1 pnpm --filter @foododer/api start
 Or with Docker, one command, then open http://localhost:8787 (add `-e FOODODER_DEMO=1` for the demo household):
 
 ```bash
-docker build -t foododer . && docker run -p 8787:8787 -v foododer-data:/data foododer
+docker build -f apps/web/Dockerfile -t foododer . && docker run -p 8787:8787 -v foododer-data:/data foododer
 ```
+
+### Deploy to Cloudflare
+
+The same API runs as a Cloudflare Worker with D1 as the database, and the PWA is served from
+Workers Assets, so one deploy gives you the app on a `*.workers.dev` URL (or your own domain).
+You need a Cloudflare account and `wrangler login` (or `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`).
+
+```bash
+pnpm --filter @foododer/web build
+pnpm --filter @foododer/worker db:create     # prints a database_id: paste it into apps/worker/wrangler.toml
+pnpm --filter @foododer/worker deploy
+```
+
+Tables are created and the catalogue seeded on the first request. `FOODODER_DEMO` in `wrangler.toml`
+controls whether the demo household is seeded ("1") or the app starts on the set-up flow (anything else).
+For recipe generation add the key as a secret: `pnpm --filter @foododer/worker exec wrangler secret put ANTHROPIC_API_KEY`.
+To run the Worker locally on Cloudflare's runtime with a local D1: `pnpm --filter @foododer/worker dev`.
 
 To try it on a phone, open the same address on the phone over your home network and "Add to Home
 Screen". It installs as an app.
@@ -78,7 +95,9 @@ self-hosted under `apps/web/public/fonts` (SIL Open Font License).
 
 ```
 apps/web         React + Vite PWA (Tailwind, vite-plugin-pwa)
-apps/api         Fastify + SQLite; serves the built PWA in production
+apps/api         Node host: better-sqlite3 + @hono/node-server; serves the built PWA in production
+apps/worker      Cloudflare host: Worker + D1 + Workers Assets (wrangler.toml)
+packages/app     The API itself (Hono) and the Store, runtime-neutral over a tiny SqlDriver interface
 packages/core    Pure logic: ingredient parsing, units, scaling, dietary rules, stock check, product matching, intent parsing
 packages/retailers  Retailer interface, mock retailer, list/deep-link hand-off helpers
 ```

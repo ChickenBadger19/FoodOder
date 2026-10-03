@@ -30,7 +30,7 @@ export function InventoryScreen() {
   return (
     <div className="flex flex-col gap-3.5 pt-3">
       <header className="flex items-center justify-between">
-        <div className="font-extrabold">Stock</div>
+        <div className="font-extrabold">Pantry</div>
         <button onClick={async () => { const r = await api.syncOrders('mock'); setInfo(`${r.added.length} line${r.added.length === 1 ? '' : 's'} imported from order history`); reload(); }} className="text-xs font-bold text-primary px-2 py-2">Import from orders</button>
       </header>
 
@@ -88,7 +88,7 @@ export function InventoryScreen() {
           })}
         </Section>
       ))}
-      {byLoc.length === 0 && <Card tone="dashed"><div className="text-sm font-semibold text-muted-foreground">Nothing here yet. Add items above or import from order history.</div></Card>}
+      {byLoc.length === 0 && <Card tone="dashed"><div className="text-sm font-semibold text-muted-foreground">Your pantry is empty. Add items above or import from order history.</div></Card>}
     </div>
   );
 }

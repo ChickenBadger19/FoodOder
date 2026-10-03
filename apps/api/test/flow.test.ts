@@ -1,16 +1,19 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { buildApp } from '../src/server.js';
+import { buildApp, type BuildOptions } from '../src/server.js';
+import type { Store } from '@foododer/app';
 
 process.env.NODE_ENV = 'test';
 
 describe('end-to-end: ask -> plan -> propose -> approve -> delivered', () => {
-  const { app, store } = buildApp({ dbFile: ':memory:', demo: true });
-  beforeAll(async () => { await app.ready(); });
-  afterAll(async () => { await app.close(); });
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let store: Store;
+  let close: () => void;
+  beforeAll(async () => { ({ app, store, close } = await buildApp({ dbFile: ':memory:', demo: true } satisfies BuildOptions)); });
+  afterAll(() => close());
 
   const json = async (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => {
-    const res = await app.inject({ method, url, payload: body });
-    return { status: res.statusCode, body: res.json() };
+    const res = await app.request(url, { method, headers: body === undefined ? {} : { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
   };
 
   it('parses an ask into a saved recipe and a list item', async () => {
@@ -89,29 +92,29 @@ describe('end-to-end: ask -> plan -> propose -> approve -> delivered', () => {
     expect(ok.status).toBe(200);
     expect(ok.body.pushed).toBeGreaterThan(3);
     // Preference learned from approval
-    expect(store.prefs().find(p => p.itemId === 'gf-lasagne-sheets')?.productId).toBe('p2');
+    expect((await store.prefs()).find(p => p.itemId === 'gf-lasagne-sheets')?.productId).toBe('p2');
     // Running list items marked ordered
-    expect(store.listItems().filter(l => l.status === 'open')).toHaveLength(0);
+    expect((await store.listItems()).filter(l => l.status === 'open')).toHaveLength(0);
   });
 
   it('moves delivered lines into stock and deducts when cooked', async () => {
-    const before = store.stock().length;
+    const before = (await store.stock()).length;
     const { body } = await json('POST', `/api/orders/${orderId}/delivered`, {});
     expect(body.added.length).toBeGreaterThan(3);
-    expect(store.stock().length).toBe(before + body.added.length);
-    const gf = store.stock().find(s => s.itemId === 'gf-lasagne-sheets');
+    expect((await store.stock()).length).toBe(before + body.added.length);
+    const gf = (await store.stock()).find(s => s.itemId === 'gf-lasagne-sheets');
     expect(gf?.freeFrom).toEqual(['gluten']);
 
     const cooked = await json('POST', `/api/plans/${planId}/cooked`, {});
     expect(cooked.status).toBe(200);
-    const mince = store.stock().filter(s => s.itemId === 'beef-mince').reduce((n, s) => n + s.qty, 0);
+    const mince = (await store.stock()).filter(s => s.itemId === 'beef-mince').reduce((n, s) => n + s.qty, 0);
     expect(mince).toBe(250); // bought 1000 g, cooked 750 g
   });
 
   it('handles "out of" and stock adds via ask', async () => {
     const { body } = await json('POST', '/api/ask', { text: "we're out of milk and we have 3 onions" });
     expect(body.results[0]).toMatchObject({ kind: 'out_of', item: 'whole milk' });
-    expect(store.stock().some(s => s.itemId === 'milk')).toBe(false);
+    expect((await store.stock()).some(s => s.itemId === 'milk')).toBe(false);
     expect(body.results[1]).toMatchObject({ kind: 'stock_add', stock: { itemId: 'onion', qty: 3 } });
   });
 });

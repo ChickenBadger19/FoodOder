@@ -102,7 +102,8 @@ Monorepo, TypeScript end to end, one deployable backend plus a PWA.
 foododer/
 ├── apps/
 │   ├── web/        # PWA: React + Vite + vite-plugin-pwa, Tailwind. Installable on phone.
-│   └── api/        # Fastify server. Owns DB, Tesco session, LLM calls. Serves the PWA in prod.
+│   ├── api/        # Node host (Hono + better-sqlite3). Serves the PWA in prod.
+│   └── worker/     # Cloudflare host (Worker + D1 + Workers Assets). Same API, no server to run.
 ├── packages/
 │   ├── core/       # Pure logic, no I/O: ingredient parsing, unit conversion, scaling,
 │   │               # inventory subtraction, product ranking. Heavily unit-tested.
@@ -125,7 +126,7 @@ foododer/
 | Concern | Choice | Why |
 |---|---|---|
 | Frontend | React 19 + Vite + `vite-plugin-pwa` + Tailwind | Mature PWA tooling, offline shell, camera access for barcode scanning |
-| Backend | Node 22 + Fastify + TypeScript | Same language as the Tesco libraries we reuse; Playwright needs Node anyway |
+| Backend | Hono + TypeScript, hosted on Node (SQLite) or Cloudflare Workers (D1) | Same language as the Tesco libraries we reuse; Playwright needs Node anyway |
 | Database | SQLite via Drizzle ORM for the MVP | Zero ops, single user. Drizzle lets us move to Postgres (e.g. Supabase) without rewriting queries if it ever goes multi-user |
 | Tesco layer | `open-supermarkets` as a dependency, wrapped; fork its Tesco provider if we need to patch | MIT, maintained, already handles session import + GraphQL + batching |
 | LLM | Anthropic API, Claude. A cheaper model for routine structured extraction, a stronger one for recipe generation and the chat interface | Structured-output prompts for ingredient parsing, recipe generation, product disambiguation and the natural-language ordering interface |
@@ -421,7 +422,7 @@ dump and never in git.
 
 ---
 
-## 6. API surface (Fastify)
+## 6. API surface (Hono, in packages/app)
 
 ```
 POST /recipes/resolve        { query | url | servings } → candidate recipe(s) for confirmation
@@ -639,7 +640,7 @@ The repo now contains a working prototype against a mock retailer. See `README.m
 
 - `packages/core`: parsing, units, scaling, dietary rules, stock check, matching, intents. 34 unit tests.
 - `packages/retailers`: `Retailer` interface with `modes`, mock catalogue, hand-off helpers.
-- `apps/api`: Fastify + SQLite, seeded household, 7-step end-to-end test of ask → plan → propose →
+- `apps/api`: Node host over the shared Hono API, seeded household, 7-step end-to-end test of ask → plan → propose →
   blocked line → approve → delivered → cooked.
 - `apps/web`: installable PWA on shadcn/ui components with a custom palette; wireframed screens plus
   a Week planner, a chat sheet on every screen, and the three-step set-up flow, all driven in Chromium.

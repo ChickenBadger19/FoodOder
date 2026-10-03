@@ -5,7 +5,7 @@ import {
 } from '@foododer/core';
 import type { Retailer } from '@foododer/retailers';
 import { renderHandoffList } from '@foododer/retailers';
-import type { Store, Plan, ListItem } from '../db/index.js';
+import type { Store, Plan, ListItem } from '../store.js';
 
 export interface OrderLine {
   key: string;
@@ -56,12 +56,13 @@ function sumTotals(d: DraftOrder) {
 }
 
 export async function proposeOrder(store: Store, retailer: Retailer, planIds?: string[]): Promise<DraftOrder> {
-  const items = store.items();
-  const members = store.members();
-  const subs = store.substitutions();
-  const prefs = store.prefs();
-  const household = store.setting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] as string[] });
-  const plans = store.plans().filter(p => p.status === 'planned' && (!planIds || planIds.includes(p.id)));
+  const items = await store.items();
+  const members = await store.members();
+  const subs = await store.substitutions();
+  const prefs = await store.prefs();
+  const household = await store.setting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] as string[] });
+  const plans = (await store.plans()).filter(p => p.status === 'planned' && (!planIds || planIds.includes(p.id)));
+  const recipesById = new Map((await store.recipes()).map(r => [r.id, r]));
 
   // Everyone who eats at any planned meal contributes their constraints to the shop.
   const eaterIds = new Set(plans.flatMap(p => p.eaterIds));
@@ -71,7 +72,7 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
   // Constraints follow the meal, not the whole shop: Sam's gluten rule applies to the meals Sam eats.
   const lineActive = new Map<IngredientLine, ActiveConstraints>();
   const scaled = plans.map(plan => {
-    const recipe = store.recipe(plan.recipeId)!;
+    const recipe = recipesById.get(plan.recipeId)!;
     const planEaters = members.filter(m => plan.eaterIds.includes(m.id));
     const planActive = activeConstraints(planEaters);
     const s = scaleRecipe(recipe, plan.servings);
@@ -82,7 +83,7 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
 
   const needs = aggregateNeeds(scaled, items);
   const activeFor = (need: { from: { line: IngredientLine }[] }) => mergeActive(need.from.map(f => lineActive.get(f.line)).filter((a): a is ActiveConstraints => !!a));
-  const shortfalls = computeShortfall(needs, store.stock(), items, activeFor);
+  const shortfalls = computeShortfall(needs, await store.stock(), items, activeFor);
 
   const boughtBefore = new Set<string>();
   for (const o of await retailer.orders()) for (const l of o.lines) boughtBefore.add(l.product.id);
@@ -128,7 +129,7 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
   }
 
   // Running list -> extras
-  for (const li of store.listItems().filter(l => l.status === 'open')) {
+  for (const li of (await store.listItems()).filter(l => l.status === 'open')) {
     lines.push(await buildExtrasLine(store, retailer, li, ctx));
   }
 
@@ -163,8 +164,8 @@ function hintWords(text: string, item: Item | null): string[] {
 }
 
 export async function buildExtrasLine(store: Store, retailer: Retailer, li: ListItem, ctx: MatchContext): Promise<OrderLine> {
-  const items = store.items();
-  const known = li.itemId ? store.item(li.itemId) ?? null : resolveItem(li.text, items);
+  const items = await store.items();
+  const known = li.itemId ? (await store.item(li.itemId)) ?? null : resolveItem(li.text, items);
   const item = known ?? adhocItem(li.text);
   const candidates = await searchCandidates(retailer, known ? known.name : li.text, known);
   if (known) for (const p of await retailer.search(li.text, 8)) if (!candidates.some(c => c.id === p.id)) candidates.push(p);
@@ -196,8 +197,8 @@ export async function buildExtrasLine(store: Store, retailer: Retailer, li: List
 
 /** Add a running-list item to an existing draft (chat while the basket is open). */
 export async function appendListLine(store: Store, retailer: Retailer, draft: DraftOrder, li: ListItem): Promise<DraftOrder> {
-  const prefs = store.prefs();
-  const household = store.setting('household', { ownBrandOk: true });
+  const prefs = await store.prefs();
+  const household = await store.setting('household', { ownBrandOk: true });
   const boughtBefore = new Set<string>();
   for (const o of await retailer.orders()) for (const l of o.lines) boughtBefore.add(l.product.id);
   const line = await buildExtrasLine(store, retailer, li, { active: activeConstraints([]), prefs, ownBrandOk: household.ownBrandOk, boughtBefore });
@@ -208,13 +209,13 @@ export async function appendListLine(store: Store, retailer: Retailer, draft: Dr
 }
 
 /** After approval, items that were ad hoc become real catalogue entries so next time they match instantly. */
-export function promoteAdhocItems(store: Store, draft: DraftOrder): void {
+export async function promoteAdhocItems(store: Store, draft: DraftOrder): Promise<void> {
   for (const l of draft.lines) {
     if (!l.itemId?.startsWith('adhoc:') || !l.chosen || l.removed) continue;
     const name = l.itemId.slice('adhoc:'.length);
     const id = name.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    if (!store.item(id)) {
-      store.upsertItem({ id, name, aliases: [], category: 'household', defaultUnit: 'count', allergens: [], isStaple: false });
+    if (!(await store.item(id))) {
+      await store.upsertItem({ id, name, aliases: [], category: 'household', defaultUnit: 'count', allergens: [], isStaple: false });
     }
     l.itemId = id;
   }
@@ -250,6 +251,3 @@ export function applyLineChange(draft: DraftOrder, key: string, change: { produc
   return draft;
 }
 
-export function planLabel(p: Plan, store: Store): string {
-  return `${store.recipe(p.recipeId)?.name ?? p.recipeId} for ${p.servings}${p.day ? ` on ${p.day}` : ''}`;
-}

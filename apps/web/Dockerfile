@@ -1,10 +1,13 @@
 # FoodOder: API + built PWA in one container. Data lives in /data (mount a volume).
+# Build from the repo root: docker build -f apps/web/Dockerfile -t foododer .
 FROM node:22-bookworm AS build
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+COPY packages/app/package.json packages/app/
 COPY packages/core/package.json packages/core/
 COPY packages/retailers/package.json packages/retailers/
 RUN pnpm install --frozen-lockfile

@@ -20,17 +20,17 @@ const RecipeSchema = z.object({
   steps: z.array(z.string()),
 });
 
-export function llmAvailable(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+export function llmAvailable(apiKey?: string): boolean {
+  return Boolean(apiKey ?? (typeof process !== 'undefined' ? process.env?.ANTHROPIC_API_KEY : undefined));
 }
 
 /**
  * Generate a recipe by name with Claude, in UK metric units, already honouring the household's constraints.
  * Returns null when no API key is configured so the app keeps working offline.
  */
-export async function generateRecipe(query: string, servings: number, constraintNotes: string[], items: Item[]): Promise<Recipe | null> {
-  if (!llmAvailable()) return null;
-  const client = new Anthropic();
+export async function generateRecipe(query: string, servings: number, constraintNotes: string[], items: Item[], apiKey?: string): Promise<Recipe | null> {
+  if (!llmAvailable(apiKey)) return null;
+  const client = new Anthropic(apiKey ? { apiKey } : {});
   const constraints = constraintNotes.length ? `Dietary requirements that MUST be honoured: ${constraintNotes.join('; ')}.` : 'No dietary constraints.';
   const response = await client.messages.parse({
     model: 'claude-opus-5-5',

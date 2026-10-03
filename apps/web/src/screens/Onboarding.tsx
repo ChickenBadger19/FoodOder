@@ -159,7 +159,7 @@ export function Onboarding() {
             <ul className="text-sm font-semibold flex flex-col gap-1.5 m-0 pl-5">
               <li>"lasagne for friday" and see who's eating and what gets swapped</li>
               <li>"we need bleach" and watch it land on the running list</li>
-              <li>Stock → Import from orders to fill the cupboard in one tap</li>
+              <li>Pantry → Import from orders to fill the cupboard in one tap</li>
             </ul>
           </Card>
         </>

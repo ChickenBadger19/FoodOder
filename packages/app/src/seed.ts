@@ -1,5 +1,5 @@
 import { parseIngredient, resolveLines, type Item, type Member, type Recipe, type StockItem, type Substitution } from '@foododer/core';
-import { Store, newId } from './db/index.js';
+import { Store, newId } from './store.js';
 
 type I = Omit<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'> & Partial<Pick<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'>>;
 const food = (i: I): Item => ({ aliases: [], category: 'food', allergens: [], isStaple: false, ...i });
@@ -138,26 +138,19 @@ export const STOCK: StockItem[] = [
  * Catalogue, substitutions and recipes are always seeded. The demo household (people, stock, running
  * list, preferences) only with `demo`, otherwise the app starts on the onboarding flow.
  */
-export function seed(store: Store, opts: { demo?: boolean } = {}) {
-  for (const i of ITEMS) store.upsertItem(i);
-  for (const s of SUBSTITUTIONS) store.upsertSubstitution(s);
-  for (const r of RECIPES) store.upsertRecipe(r);
-  store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
+export async function seed(store: Store, opts: { demo?: boolean } = {}): Promise<void> {
+  for (const i of ITEMS) await store.upsertItem(i);
+  for (const s of SUBSTITUTIONS) await store.upsertSubstitution(s);
+  for (const r of RECIPES) await store.upsertRecipe(r);
+  await store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
   if (!opts.demo) { store.setSetting('onboarded', false); return; }
-  for (const m of MEMBERS) store.upsertMember(m);
-  for (const s of STOCK) store.upsertStock(s);
-  store.upsertListItem({ id: newId('li_'), text: 'bleach', itemId: 'bleach', qty: null, addedVia: 'chat', status: 'open', createdAt: new Date().toISOString() });
-  store.upsertListItem({ id: newId('li_'), text: 'bin bags', itemId: 'bin-bags', qty: null, addedVia: 'manual', status: 'open', createdAt: new Date().toISOString() });
-  store.upsertPref({ itemId: 'beef-mince', retailer: 'mock', productId: 'm1', alwaysAsk: false });
-  store.upsertPref({ itemId: 'bleach', retailer: 'mock', productId: 'h1', alwaysAsk: false });
-  store.setSetting('meMemberId', 'jeff');
-  store.setSetting('onboarded', true);
+  for (const m of MEMBERS) await store.upsertMember(m);
+  for (const s of STOCK) await store.upsertStock(s);
+  await store.upsertListItem({ id: newId('li_'), text: 'bleach', itemId: 'bleach', qty: null, addedVia: 'chat', status: 'open', createdAt: new Date().toISOString() });
+  await store.upsertListItem({ id: newId('li_'), text: 'bin bags', itemId: 'bin-bags', qty: null, addedVia: 'manual', status: 'open', createdAt: new Date().toISOString() });
+  await store.upsertPref({ itemId: 'beef-mince', retailer: 'mock', productId: 'm1', alwaysAsk: false });
+  await store.upsertPref({ itemId: 'bleach', retailer: 'mock', productId: 'h1', alwaysAsk: false });
+  await store.setSetting('meMemberId', 'jeff');
+  await store.setSetting('onboarded', true);
 }
 
-if (process.argv[1] && process.argv[1].endsWith('seed.ts')) {
-  const file = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
-  const demo = process.argv.includes('--demo') || process.env.FOODODER_DEMO === '1';
-  const store = new Store(file);
-  seed(store, { demo });
-  console.log(`Seeded ${file}: ${ITEMS.length} items, ${RECIPES.length} recipes${demo ? `, demo household (${MEMBERS.length} people, ${STOCK.length} stock lines)` : ''}.`);
-}
