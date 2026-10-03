@@ -139,11 +139,15 @@ export const STOCK: StockItem[] = [
  * list, preferences) only with `demo`, otherwise the app starts on the onboarding flow.
  */
 export async function seed(store: Store, opts: { demo?: boolean } = {}): Promise<void> {
+  await store.batch(() => seedRows(store, opts));
+}
+
+async function seedRows(store: Store, opts: { demo?: boolean }): Promise<void> {
   for (const i of ITEMS) await store.upsertItem(i);
   for (const s of SUBSTITUTIONS) await store.upsertSubstitution(s);
   for (const r of RECIPES) await store.upsertRecipe(r);
   await store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
-  if (!opts.demo) { store.setSetting('onboarded', false); return; }
+  if (!opts.demo) { await store.setSetting('onboarded', false); return; }
   for (const m of MEMBERS) await store.upsertMember(m);
   for (const s of STOCK) await store.upsertStock(s);
   await store.upsertListItem({ id: newId('li_'), text: 'bleach', itemId: 'bleach', qty: null, addedVia: 'chat', status: 'open', createdAt: new Date().toISOString() });

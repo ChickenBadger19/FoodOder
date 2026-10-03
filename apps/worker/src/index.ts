@@ -21,6 +21,12 @@ function d1Driver(db: D1Database): SqlDriver {
       const stmts = sql.split('\n').map(s => s.trim()).filter(Boolean).map(s => db.prepare(s));
       await db.batch(stmts);
     },
+    async batch(stmts) {
+      // One round trip for the whole seed; also keeps us well under the per-request subrequest limit.
+      for (let i = 0; i < stmts.length; i += 100) {
+        await db.batch(stmts.slice(i, i + 100).map(s => db.prepare(s.sql).bind(...s.params)));
+      }
+    },
   };
 }
 

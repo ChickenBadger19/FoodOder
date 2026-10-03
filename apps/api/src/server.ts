@@ -19,6 +19,9 @@ export function sqliteDriver(file: string): SqlDriver & { close(): void } {
     async all<T>(sql: string, params: unknown[] = []) { return db.prepare(sql).all(...params) as T[]; },
     async run(sql: string, params: unknown[] = []) { db.prepare(sql).run(...params); },
     async exec(sql: string) { db.exec(sql); },
+    async batch(stmts) {
+      db.transaction(() => { for (const s of stmts) db.prepare(s.sql).run(...s.params); })();
+    },
     close() { db.close(); },
   };
 }
