@@ -1,5 +1,6 @@
 import type { Product } from '@foodify/core';
 import type { BasketLine, Retailer, SessionStatus } from './index.js';
+import GENERATED from './data/products.json' with { type: 'json' };
 
 type P = Omit<Product, 'retailer'>;
 
@@ -77,7 +78,7 @@ export class MockRetailer implements Retailer {
   private basket: BasketLine[] = [];
   private pastOrders: { id: string; placedAt: string; lines: { product: Product; qty: number }[] }[] = [];
 
-  constructor(displayName = 'Mock Supermarket', private readonly catalogue: P[] = CATALOGUE) {
+  constructor(displayName = 'Mock Supermarket', private readonly catalogue: P[] = [...CATALOGUE, ...(GENERATED as P[])]) {
     this.displayName = displayName;
     // A plausible order history to bootstrap inventory from.
     this.pastOrders = [{

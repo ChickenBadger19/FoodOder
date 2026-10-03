@@ -3,11 +3,13 @@ import { cors } from 'hono/cors';
 import { z, ZodError } from 'zod';
 import {
   activeConstraints, deductCooked, parseAsk, parseIngredient, resolveItem, resolveLines, scaleRecipe, applySubstitutions, formatQty, servingsFor,
-  CONSTRAINT_KINDS, type Member, type Recipe, type StockItem,
+  CONSTRAINT_KINDS, normaliseName, type Member, type Recipe, type StockItem,
 } from '@foodify/core';
 import { MockRetailer, type Retailer } from '@foodify/retailers';
 import { Store, newId, type Plan, type ListItem } from './store.js';
-import { seed } from './seed.js';
+
+const STOP = new Set(['a', 'an', 'the', 'some', 'of', 'with', 'and', 'for', 'to', 'on', 'in', 'my', 'our', 'tonight', 'tea', 'dinner', 'lunch', 'breakfast', 'please']);
+import { seed, seedCatalogue, SEED_VERSION } from './seed.js';
 import { applyLineChange, appendListLine, promoteAdhocItems, proposeOrder, type DraftOrder } from './services/propose.js';
 import { dateForDay, weekRange } from './services/dates.js';
 import { generateRecipe, llmAvailable } from './llm.js';
@@ -22,7 +24,9 @@ export interface AppOptions {
 /** Create tables and seed the catalogue (and the demo household when asked) if the database is empty. */
 export async function prepareStore(store: Store, opts: { demo?: boolean } = {}): Promise<void> {
   await store.init();
-  if (await store.isEmpty()) await seed(store, { demo: opts.demo });
+  if (await store.isEmpty()) { await seed(store, { demo: opts.demo }); return; }
+  // An existing database from an older build: top up the catalogue and recipe library, leave the household alone.
+  if ((await store.setting<number>('seedVersion', 1)) < SEED_VERSION) await seedCatalogue(store);
 }
 
 /**
@@ -80,13 +84,25 @@ export function createApp({ store, retailer: retailerOpt, anthropicApiKey }: App
   }
 
   async function resolveRecipe(query: string, servings: number, eaters: Member[]): Promise<{ recipe: Recipe | null; candidates: { id: string; name: string }[]; via: 'saved' | 'llm' | 'none' }> {
-    const q = query.toLowerCase();
+    const q = normaliseName(query);
+    const qWords = q.split(' ').filter(w => w.length > 1 && !STOP.has(w));
     const recipes = await store.recipes();
-    const exact = recipes.find(r => r.name.toLowerCase() === q);
-    const fuzzy = recipes.filter(r => r.name.toLowerCase().includes(q) || q.includes(r.name.toLowerCase()) || q.split(' ').every(w => r.name.toLowerCase().includes(w)));
-    if (exact) return { recipe: exact, candidates: [], via: 'saved' };
-    if (fuzzy.length === 1) return { recipe: fuzzy[0]!, candidates: [], via: 'saved' };
-    if (fuzzy.length > 1) return { recipe: null, candidates: fuzzy.map(r => ({ id: r.id, name: r.name })), via: 'saved' };
+    const named = recipes.map(r => ({ r, n: normaliseName(r.name), words: normaliseName(r.name).split(' ') }));
+    const exact = named.find(x => x.n === q);
+    if (exact) return { recipe: exact.r, candidates: [], via: 'saved' };
+    // "bacon sandwich" -> every asked word appears (as a word or prefix) in the recipe name. Shortest names first:
+    // "chicken curry" ranks "Chicken curry" above "Slow cooker chicken curry".
+    const matches = named
+      .filter(x => qWords.length > 0 && qWords.every(w => x.words.some(nw => nw === w || (w.length > 3 && nw.startsWith(w)))))
+      .sort((a, b) => a.words.length - b.words.length || a.n.localeCompare(b.n));
+    // The asked phrase contains a whole recipe name ("spag bol for tea" won't, "chicken tikka masala tonight" will).
+    const contained = named.filter(x => x.n.length >= 4 && (` ${q} `).includes(` ${x.n} `)).sort((a, b) => b.n.length - a.n.length);
+    const best = matches[0] ?? contained[0];
+    if (best) {
+      const sameLength = matches.filter(x => x.words.length === best.words.length);
+      if (best.words.length === qWords.length || sameLength.length === 1) return { recipe: best.r, candidates: [], via: 'saved' };
+      return { recipe: null, candidates: matches.slice(0, 8).map(x => ({ id: x.r.id, name: x.r.name })), via: 'saved' };
+    }
     const active = activeConstraints(eaters);
     const notes = [...active.allergens].map(([a, s]) => `${a}-free (${s}) for ${active.who.join(', ')}`);
     const generated = await generateRecipe(query, servings, notes, await store.items(), anthropicApiKey);

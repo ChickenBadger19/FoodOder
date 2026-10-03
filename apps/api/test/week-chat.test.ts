@@ -38,7 +38,9 @@ describe('week planning and chat-anywhere', () => {
     expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
     const two = await json('POST', '/api/ask', { text: 'pancakes for breakfast on sunday just me and alex' });
-    expect(two.body.results[0]).toMatchObject({ eaterIds: ['jeff', 'alex'], slot: 'breakfast', via: 'none' });
+    expect(two.body.results[0]).toMatchObject({ eaterIds: ['jeff', 'alex'], slot: 'breakfast', via: 'saved' });
+    // Several pancake recipes exist, so it asks which rather than guessing.
+    expect(two.body.results[0].candidates.map((c: any) => c.name)).toContain('Scotch pancakes');
   });
 
   it('plans meals on dates with per-meal eaters and lists them by week', async () => {

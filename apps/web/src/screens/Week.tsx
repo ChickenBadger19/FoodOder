@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { addDays, api, CHANGED, dateLabel, dayName, isoToday, notifyChanged, type Plan, type Slot, type State } from '../api';
 import { Badge, Card, Notice, Pill, Primary, Spinner, titleCase } from '../ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -118,8 +118,37 @@ export function WeekScreen() {
   );
 }
 
+/** Type-to-search over the recipe library; shows the eight closest names. */
+function RecipePicker({ recipes, value, onChange }: { recipes: State['recipes']; value: string; onChange: (id: string) => void }) {
+  const chosen = recipes.find(r => r.id === value);
+  const [text, setText] = useState(chosen?.name ?? '');
+  const [open, setOpen] = useState(false);
+  const q = text.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  const matches = (q ? recipes.filter(r => words.every(w => r.name.toLowerCase().includes(w))) : recipes)
+    .slice()
+    .sort((a, b) => a.name.length - b.name.length)
+    .slice(0, 8);
+  return (
+    <div className="relative">
+      <Input id="recipe" role="combobox" aria-label="Saved recipe" aria-expanded={open} placeholder="Start typing a recipe name" value={text}
+        onChange={e => { setText(e.target.value); setOpen(true); if (chosen && e.target.value !== chosen.name) onChange(''); }}
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} autoComplete="off" />
+      {open && matches.length > 0 && (
+        <ul role="listbox" className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card shadow-md max-h-64 overflow-auto">
+          {matches.map(r => (
+            <li key={r.id} role="option" aria-selected={r.id === value}
+              className="cursor-pointer px-3 py-2 text-sm hover:bg-muted aria-selected:font-bold"
+              onMouseDown={e => { e.preventDefault(); onChange(r.id); setText(r.name); setOpen(false); }}>{r.name}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AddMeal({ state, date, slot: initialSlot, onClose, onAsk }: { state: State; date: string; slot: Slot; onClose: () => void; onAsk: () => void }) {
-  const [recipeId, setRecipeId] = useState(state.recipes[0]?.id ?? '');
+  const [recipeId, setRecipeId] = useState('');
   const [slot, setSlot] = useState<Slot>(initialSlot);
   const [servings, setServings] = useState(state.household.defaultServings);
   const [eaterIds, setEaterIds] = useState(state.members.filter(m => m.eatsByDefault).map(m => m.id));
@@ -139,12 +168,7 @@ function AddMeal({ state, date, slot: initialSlot, onClose, onAsk }: { state: St
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Cancel"><XIcon /></Button>
         </div>
         <Label htmlFor="recipe">Saved recipe</Label>
-        <Select value={recipeId} onValueChange={setRecipeId}>
-          <SelectTrigger id="recipe" aria-label="Saved recipe"><SelectValue placeholder="Choose a recipe" /></SelectTrigger>
-          <SelectContent>
-            {state.recipes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <RecipePicker recipes={state.recipes} value={recipeId} onChange={setRecipeId} />
         <Label>Meal</Label>
         <ToggleGroup type="single" value={slot} onValueChange={v => v && setSlot(v as Slot)} variant="soft">
           {SLOTS.map(s => <ToggleGroupItem key={s} value={s}>{titleCase(s)}</ToggleGroupItem>)}

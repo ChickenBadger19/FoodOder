@@ -1,5 +1,7 @@
 import { parseIngredient, resolveLines, type Item, type Member, type Recipe, type StockItem, type Substitution } from '@foodify/core';
 import { Store, newId } from './store.js';
+import { CATALOGUE_EXTRA, EXTRA_ALIASES } from './data/catalogue.js';
+import LIBRARY from './data/recipes.json' with { type: 'json' };
 
 type I = Omit<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'> & Partial<Pick<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'>>;
 const food = (i: I): Item => ({ aliases: [], category: 'food', allergens: [], isStaple: false, ...i });
@@ -77,9 +79,21 @@ export const SUBSTITUTIONS: Substitution[] = [
   { itemId: 'soy-sauce', allergen: 'gluten', substituteItemId: 'tamari' },
 ];
 
-function recipe(id: string, name: string, servings: number, lines: string[], steps: string[], fixed: string[] = []): Recipe {
-  const ingredients = resolveLines(lines.map(parseIngredient), ITEMS).map(l => fixed.includes(l.itemId ?? '') ? { ...l, scaling: 'fixed' as const } : l);
-  return { id, name, servings, source: { type: 'seed' }, ingredients, steps };
+/** Every item the app knows at seed time: the hand-written set plus the generated catalogue. */
+export const ALL_ITEMS: Item[] = [
+  ...ITEMS.map(i => EXTRA_ALIASES[i.id] ? { ...i, aliases: [...i.aliases, ...EXTRA_ALIASES[i.id]!] } : i),
+  ...CATALOGUE_EXTRA.filter(x => !ITEMS.some(i => i.id === x.id)),
+];
+
+function recipe(id: string, name: string, servings: number, lines: string[], steps: string[], fixed: string[] = [], extra: Pick<Recipe, 'tags' | 'minutes'> = {}): Recipe {
+  const ingredients = resolveLines(lines.map(parseIngredient), ALL_ITEMS).map(l => fixed.includes(l.itemId ?? '') ? { ...l, scaling: 'fixed' as const } : l);
+  return { id, name, servings, source: { type: 'seed' }, ingredients, steps, ...extra };
+}
+
+interface LibraryRecipe { id: string; name: string; servings: number; tags: string[]; minutes: number | null; ingredients: string[]; steps: string[] }
+/** The generated library of common UK dishes (packages/app/src/data/recipes.json), parsed and resolved at seed time. */
+export function libraryRecipes(): Recipe[] {
+  return (LIBRARY as LibraryRecipe[]).map(r => recipe(r.id, r.name, r.servings, r.ingredients, r.steps, [], { tags: r.tags, minutes: r.minutes }));
 }
 
 export const RECIPES: Recipe[] = [
@@ -138,14 +152,32 @@ export const STOCK: StockItem[] = [
  * Catalogue, substitutions and recipes are always seeded. The demo household (people, stock, running
  * list, preferences) only with `demo`, otherwise the app starts on the onboarding flow.
  */
+/** Bump when the catalogue, substitutions or recipe library change; existing databases are topped up on next start. */
+export const SEED_VERSION = 2;
+
 export async function seed(store: Store, opts: { demo?: boolean } = {}): Promise<void> {
   await store.batch(() => seedRows(store, opts));
 }
 
+/** Catalogue items, substitutions and library recipes: safe to re-run, never touches the household's own data. */
+export async function seedCatalogue(store: Store): Promise<void> {
+  await store.batch(async () => {
+    for (const i of ALL_ITEMS) await store.upsertItem(i);
+    for (const s of SUBSTITUTIONS) await store.upsertSubstitution(s);
+    const seen = new Set(RECIPES.map(r => r.id));
+    for (const r of RECIPES) await store.upsertRecipe(r);
+    for (const r of libraryRecipes()) if (!seen.has(r.id)) await store.upsertRecipe(r);
+    await store.setSetting('seedVersion', SEED_VERSION);
+  });
+}
+
 async function seedRows(store: Store, opts: { demo?: boolean }): Promise<void> {
-  for (const i of ITEMS) await store.upsertItem(i);
+  for (const i of ALL_ITEMS) await store.upsertItem(i);
   for (const s of SUBSTITUTIONS) await store.upsertSubstitution(s);
+  const seen = new Set(RECIPES.map(r => r.id));
   for (const r of RECIPES) await store.upsertRecipe(r);
+  for (const r of libraryRecipes()) if (!seen.has(r.id)) await store.upsertRecipe(r);
+  await store.setSetting('seedVersion', SEED_VERSION);
   await store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
   if (!opts.demo) { await store.setSetting('onboarded', false); return; }
   for (const m of MEMBERS) await store.upsertMember(m);

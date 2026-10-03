@@ -13,12 +13,22 @@ export interface PackPlan {
 /** How many of this product cover the quantity needed. Null when units cannot be reconciled. */
 export function packsNeeded(product: Product, needQty: number, needUnit: Unit, item: Item): PackPlan | null {
   const perPack = product.packQty * (product.packCount ?? 1);
-  const perPackInNeed = convert(perPack, product.packUnit, needUnit, item);
+  let perPackInNeed = convert(perPack, product.packUnit, needUnit, item);
+  // Spoonfuls of something sold by weight with no known density: treat it as water-like rather than giving up.
+  if ((perPackInNeed === null || perPackInNeed <= 0) && !item.densityGPerMl) perPackInNeed = convert(perPack, product.packUnit, needUnit, { ...item, densityGPerMl: 1 });
   if (perPackInNeed === null || perPackInNeed <= 0) {
-    // Unknown relationship, assume one pack per "count" need.
     if (needUnit === 'count' || needUnit === 'tin' || needUnit === 'pack') {
-      const packs = Math.max(1, Math.ceil(needQty / (product.packCount ?? 1)));
-      return { packs, totalQty: packs * (product.packCount ?? 1), unit: needUnit, overshoot: packs * (product.packCount ?? 1) - needQty };
+      if (product.packUnit === 'count' || product.packUnit === 'tin' || product.packUnit === 'pack') {
+        // Counted need, counted product: one per item needed.
+        const packs = Math.max(1, Math.ceil(needQty / (product.packCount ?? 1)));
+        return { packs, totalQty: packs * (product.packCount ?? 1), unit: needUnit, overshoot: packs * (product.packCount ?? 1) - needQty };
+      }
+      // "2 carrots" against a 1kg bag: one bag covers it.
+      return { packs: 1, totalQty: needQty, unit: needUnit, overshoot: 0 };
+    }
+    // A handful, bunch, clove or slice of something sold by weight or count: one pack covers it.
+    if (['handful', 'bunch', 'clove', 'slice', 'sheet', 'pinch', 'cup', 'tsp', 'tbsp'].includes(needUnit)) {
+      return { packs: 1, totalQty: needQty, unit: needUnit, overshoot: 0 };
     }
     return null;
   }

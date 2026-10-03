@@ -58,6 +58,9 @@ export interface Recipe {
   source: { type: 'url' | 'llm' | 'manual' | 'seed'; ref?: string };
   ingredients: IngredientLine[];
   steps: string[];
+  /** Browsing hints from the recipe library: cuisine/meal tags and total time in minutes. */
+  tags?: string[];
+  minutes?: number | null;
 }
 
 export interface Constraint {

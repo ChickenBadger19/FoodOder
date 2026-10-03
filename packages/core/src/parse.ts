@@ -136,7 +136,7 @@ export function parseIngredient(rawInput: string): IngredientLine {
 const MODIFIERS = new Set(['fresh', 'large', 'small', 'medium', 'big', 'ripe', 'organic', 'free', 'range', 'british', 'extra', 'virgin', 'some', 'more', 'new', 'good', 'nice']);
 
 export function resolveItem(name: string, items: Item[]): Item | null {
-  const n = normaliseName(name).replace(/^(?:tins?|cans?|packs?|packets?|jars?|bottles?|bags?|boxes|box|bunch(?:es)?|handfuls?|cloves?|sticks?|slices?) of /, '');
+  const n = normaliseName(name).replace(/^(?:tins?|cans?|packs?|packets?|jars?|bottles?|bags?|boxes|box|bunch(?:es)?|handfuls?|cloves?|sticks?|stalks?|slices?|rashers?|fillets?|sprigs?|heads?|knobs?|sheets?|pieces?) (?:of )?(?=[a-z])/, '');
   if (!n) return null;
   const candidates = [n, n.replace(/ies$/, 'y'), n.replace(/es$/, ''), n.replace(/s$/, '')];
   for (const c of candidates) {
