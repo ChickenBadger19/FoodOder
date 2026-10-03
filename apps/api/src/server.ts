@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import {
-  activeConstraints, deductCooked, parseAsk, parseIngredient, resolveItem, resolveLines, scaleRecipe, applySubstitutions, formatQty,
-  type Member, type Recipe, type StockItem,
+  activeConstraints, deductCooked, parseAsk, parseIngredient, resolveItem, resolveLines, scaleRecipe, applySubstitutions, formatQty, servingsFor,
+  CONSTRAINT_KINDS, type Member, type Recipe, type StockItem,
 } from '@foododer/core';
 import { MockRetailer, type Retailer } from '@foododer/retailers';
 import { Store, newId, type Plan, type ListItem } from './db/index.js';
@@ -18,9 +18,9 @@ import { generateRecipe, llmAvailable } from './llm.js';
 const DB_FILE = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
 const PORT = Number(process.env.PORT ?? 8787);
 
-export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
+export function buildApp(opts: { dbFile?: string; retailer?: Retailer; demo?: boolean } = {}) {
   const store = new Store(opts.dbFile ?? DB_FILE);
-  if (store.isEmpty()) seed(store);
+  if (store.isEmpty()) seed(store, { demo: opts.demo ?? process.env.FOODODER_DEMO === '1' });
   const retailer: Retailer = opts.retailer ?? new MockRetailer('Tesco (mock)');
   const retailers = new Map<string, Retailer>([[retailer.id, retailer]]);
 
@@ -64,6 +64,7 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
       retailers: [{ id: r.id, name: r.displayName, modes: r.modes, session: await r.session() }],
       household: store.setting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] }),
       meMemberId: store.setting<string | null>('meMemberId', null) ?? store.members()[0]?.id ?? null,
+      onboarded: store.setting<boolean>('onboarded', store.members().length > 0),
       llm: llmAvailable(),
     };
   });
@@ -97,7 +98,7 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
       } else {
         const eaterIds = resolveEaters(intent.only, intent.except, members);
         const eaters = members.filter(m => eaterIds.includes(m.id));
-        const servings = intent.servings ?? (intent.only.length || intent.except.length ? Math.max(1, eaters.length) : household.defaultServings);
+        const servings = intent.servings ?? (intent.only.length || intent.except.length ? servingsFor(eaters) : household.defaultServings);
         const resolved = await resolveRecipe(intent.query, servings, eaters);
         results.push({ kind: 'recipe', query: intent.query, servings, day: intent.day, date: dateForDay(intent.day), slot: intent.slot ?? 'dinner', eaterIds, eaters: eaters.map(m => m.name), ...resolved });
       }
@@ -365,11 +366,39 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
 
   // ---------- household
   app.get('/api/household', async () => ({ members: store.members(), settings: store.setting('household', {}) }));
+  const constraintSchema = z.object({ kind: z.enum(CONSTRAINT_KINDS as [string, ...string[]]), strictness: z.enum(['preference', 'avoid', 'strict']), itemId: z.string().optional() });
+  const memberSchema = z.object({ name: z.string().min(1), age: z.number().int().min(0).max(120).nullable().optional(), eatsByDefault: z.boolean().default(true), constraints: z.array(constraintSchema).default([]) });
+  const memberId = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || newId('m_');
+
   app.put('/api/household/members/:id', async (req) => {
-    const body = z.object({ name: z.string(), eatsByDefault: z.boolean(), constraints: z.array(z.object({ kind: z.enum(['gluten_free', 'dairy_free', 'nut_free', 'egg_free', 'vegetarian', 'vegan', 'dislike']), strictness: z.enum(['preference', 'avoid', 'strict']), itemId: z.string().optional() })) }).parse(req.body);
-    const m: Member = { id: (req.params as any).id, ...body };
+    const body = memberSchema.parse(req.body);
+    const m: Member = { id: (req.params as any).id, ...body, constraints: body.constraints as Member['constraints'] };
     store.upsertMember(m);
     return m;
+  });
+  /** First-run set-up: who lives here, their ages, allergies and diets, and the household defaults. */
+  app.post('/api/household/onboard', async (req) => {
+    const body = z.object({
+      members: z.array(memberSchema).min(1),
+      meIndex: z.number().int().min(0).default(0),
+      settings: z.object({ defaultServings: z.number().int().positive().optional(), ownBrandOk: z.boolean().default(true), alwaysAskCategories: z.array(z.string()).default(['meat']), retailer: z.string().optional() }).optional(),
+    }).parse(req.body);
+    const settings = body.settings ?? { defaultServings: undefined, ownBrandOk: true, alwaysAskCategories: ['meat'], retailer: undefined };
+    for (const m of store.members()) store.deleteMember(m.id);
+    const ids: string[] = [];
+    for (const m of body.members) {
+      let id = memberId(m.name);
+      while (ids.includes(id)) id = `${id}-${ids.length}`;
+      ids.push(id);
+      store.upsertMember({ id, name: m.name, age: m.age ?? null, eatsByDefault: m.eatsByDefault, constraints: m.constraints as Member['constraints'] });
+    }
+    const members = store.members();
+    const defaultServings = settings.defaultServings ?? servingsFor(members.filter(m => m.eatsByDefault));
+    store.setSetting('household', { defaultServings, ownBrandOk: settings.ownBrandOk, alwaysAskCategories: settings.alwaysAskCategories });
+    store.setSetting('meMemberId', ids[body.meIndex] ?? ids[0]);
+    if (settings.retailer) store.setSetting('retailerPreference', settings.retailer);
+    store.setSetting('onboarded', true);
+    return { members, meMemberId: ids[body.meIndex] ?? ids[0], defaultServings };
   });
   app.delete('/api/household/members/:id', async (req) => { store.deleteMember((req.params as any).id); return { ok: true }; });
   app.put('/api/household/settings', async (req) => {

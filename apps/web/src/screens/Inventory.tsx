@@ -31,14 +31,14 @@ export function InventoryScreen() {
     <div className="flex flex-col gap-3.5 pt-3">
       <header className="flex items-center justify-between">
         <div className="font-extrabold">Stock</div>
-        <button onClick={async () => { const r = await api.syncOrders('mock'); setInfo(`${r.added.length} line${r.added.length === 1 ? '' : 's'} imported from order history`); reload(); }} className="text-xs font-bold text-green px-2 py-2">Import from orders</button>
+        <button onClick={async () => { const r = await api.syncOrders('mock'); setInfo(`${r.added.length} line${r.added.length === 1 ? '' : 's'} imported from order history`); reload(); }} className="text-xs font-bold text-primary px-2 py-2">Import from orders</button>
       </header>
 
       <form onSubmit={add} className="flex flex-col gap-1.5">
-        <label htmlFor="quick" className="text-xs font-bold text-muted">Quick add or update</label>
+        <label htmlFor="quick" className="text-xs font-bold text-muted-foreground">Quick add or update</label>
         <div className="flex gap-2">
-          <input id="quick" value={text} onChange={e => setText(e.target.value)} placeholder="2 onions, 500g pasta, 1 bleach" className="flex-1 min-w-0 text-sm px-3.5 py-3 rounded-2xl border-[1.5px] border-line-strong bg-white" />
-          <button type="submit" className="w-13 rounded-2xl bg-ink text-white text-xl font-extrabold">+</button>
+          <input id="quick" value={text} onChange={e => setText(e.target.value)} placeholder="2 onions, 500g pasta, 1 bleach" className="flex-1 min-w-0 text-sm px-3.5 py-3 rounded-2xl border-[1.5px] border-input bg-card" />
+          <button type="submit" className="w-13 rounded-2xl bg-foreground text-white text-xl font-extrabold">+</button>
         </div>
       </form>
       {error && <Notice tone="red">{error}</Notice>}
@@ -68,7 +68,7 @@ export function InventoryScreen() {
                 <div className="flex items-center gap-2.5">
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="text-sm font-bold">{titleCase(name)}</div>
-                    <div className={`text-xs font-semibold ${expSoon ? 'text-red' : 'text-muted'}`}>
+                    <div className={`text-xs font-semibold ${expSoon ? 'text-destructive' : 'text-muted-foreground'}`}>
                       {r.confidence === 'approx' ? '~' : ''}{Number.isInteger(r.qty) ? r.qty : r.qty.toFixed(1)} {r.unit === 'count' ? '' : r.unit}
                       {r.note ? ` · ${r.note}` : ''}{expSoon ? ' · use soon' : r.boughtAt ? ` · ${Math.round((Date.now() - new Date(r.boughtAt).getTime()) / 864e5)} days ago` : ''}
                     </div>
@@ -88,7 +88,7 @@ export function InventoryScreen() {
           })}
         </Section>
       ))}
-      {byLoc.length === 0 && <Card tone="dashed"><div className="text-sm font-semibold text-muted">Nothing here yet. Add items above or import from order history.</div></Card>}
+      {byLoc.length === 0 && <Card tone="dashed"><div className="text-sm font-semibold text-muted-foreground">Nothing here yet. Add items above or import from order history.</div></Card>}
     </div>
   );
 }

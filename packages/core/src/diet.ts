@@ -5,7 +5,12 @@ export const CONSTRAINT_ALLERGENS: Record<Exclude<ConstraintKind, 'dislike'>, Al
   dairy_free: ['dairy'],
   nut_free: ['nuts', 'peanuts'],
   egg_free: ['egg'],
+  soy_free: ['soy'],
+  fish_free: ['fish'],
+  shellfish_free: ['shellfish'],
+  sesame_free: ['sesame'],
   vegetarian: ['meat', 'fish', 'shellfish'],
+  pescatarian: ['meat'],
   vegan: ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'animal'],
 };
 
@@ -107,6 +112,7 @@ export type ProductDietaryStatus =
 
 const CLAIM_FOR: Partial<Record<AllergenTag, Product['dietary'][number]>> = {
   gluten: 'gluten_free', dairy: 'dairy_free', nuts: 'nut_free', peanuts: 'nut_free', meat: 'vegetarian', fish: 'vegetarian', shellfish: 'vegetarian', egg: 'vegan', animal: 'vegan',
+  // soy / sesame have no common "free from" claim on UK labels: products are judged on allergen lists only.
 };
 
 /** Evaluate a product against the active constraints for the item it would fulfil. */

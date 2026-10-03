@@ -29,6 +29,19 @@ const lasagne: Recipe = {
   ],
 };
 
+describe('portions by age', async () => {
+  const { portionFactor, servingsFor } = await import('../src/types.js');
+  it('scales portions down for children and never below one', () => {
+    expect(portionFactor(1)).toBe(0.25);
+    expect(portionFactor(3)).toBe(0.5);
+    expect(portionFactor(9)).toBe(0.75);
+    expect(portionFactor(40)).toBe(1);
+    expect(servingsFor([{ age: 40 }, { age: 38 }, { age: 9 }, { age: 3 }])).toBe(4); // 1+1+0.75+0.5 = 3.25 -> 4
+    expect(servingsFor([{ age: 3 }])).toBe(1);
+    expect(servingsFor([{ age: null }, { age: undefined }])).toBe(2);
+  });
+});
+
 describe('dietary constraints', () => {
   it('collects the strictest constraint per allergen for the people eating', () => {
     const a = activeConstraints([jeff, sam]);

@@ -4,7 +4,7 @@ import { buildApp } from '../src/server.js';
 process.env.NODE_ENV = 'test';
 
 describe('end-to-end: ask -> plan -> propose -> approve -> delivered', () => {
-  const { app, store } = buildApp({ dbFile: ':memory:' });
+  const { app, store } = buildApp({ dbFile: ':memory:', demo: true });
   beforeAll(async () => { await app.ready(); });
   afterAll(async () => { await app.close(); });
 

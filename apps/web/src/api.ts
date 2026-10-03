@@ -1,13 +1,13 @@
 export type Unit = string;
 
-export interface Member { id: string; name: string; eatsByDefault: boolean; constraints: { kind: string; strictness: string; itemId?: string }[] }
+export interface Member { id: string; name: string; age?: number | null; eatsByDefault: boolean; constraints: { kind: string; strictness: string; itemId?: string }[] }
 export interface Item { id: string; name: string; category: string; allergens: string[]; isStaple: boolean; defaultUnit: Unit }
 export type Slot = 'breakfast' | 'lunch' | 'dinner';
 export interface Plan { id: string; recipeId: string; servings: number; day: string | null; date: string | null; slot: Slot; eaterIds: string[]; status: string }
 export interface RecipeSummary { id: string; name: string; servings: number; source: { type: string; ref?: string } }
 export interface ListItem { id: string; text: string; itemId: string | null; qty: number | null; addedVia: string; status: string }
 export interface RetailerInfo { id: string; name: string; modes: string[]; session: { connected: boolean; expiresAt?: string; note?: string } }
-export interface State { members: Member[]; items: Item[]; plans: Plan[]; recipes: RecipeSummary[]; list: ListItem[]; retailers: RetailerInfo[]; household: { defaultServings: number; ownBrandOk: boolean; alwaysAskCategories: string[] }; meMemberId: string | null; llm: boolean }
+export interface State { members: Member[]; items: Item[]; plans: Plan[]; recipes: RecipeSummary[]; list: ListItem[]; retailers: RetailerInfo[]; household: { defaultServings: number; ownBrandOk: boolean; alwaysAskCategories: string[] }; meMemberId: string | null; onboarded: boolean; llm: boolean }
 
 export interface Product { retailer: string; id: string; name: string; price: number; packQty: number; packUnit: Unit; packCount?: number; dietary: string[]; allergens: string[]; mayContain: string[]; ownBrand?: boolean; brand?: string }
 export interface Ranked { product: Product; plan: { packs: number; totalQty: number; unit: Unit; overshoot: number }; lineTotal: number; score: number; dietary: { kind: string; allergen?: string; blocks?: boolean }; blocked: boolean; reasons: string[] }
@@ -50,7 +50,8 @@ export const api = {
   list: () => call<ListItem[]>('GET', '/api/list'),
   addList: (text: string) => call<ListItem>('POST', '/api/list', { text }),
   deleteList: (id: string) => call('DELETE', `/api/list/${id}`),
-  saveMember: (m: Member) => call<Member>('PUT', `/api/household/members/${m.id}`, { name: m.name, eatsByDefault: m.eatsByDefault, constraints: m.constraints }),
+  saveMember: (m: Member) => call<Member>('PUT', `/api/household/members/${m.id}`, { name: m.name, age: m.age ?? null, eatsByDefault: m.eatsByDefault, constraints: m.constraints }),
+  onboard: (body: { members: Omit<Member, 'id'>[]; meIndex: number; settings: { ownBrandOk: boolean; alwaysAskCategories: string[]; retailer?: string } }) => call<{ members: Member[]; meMemberId: string; defaultServings: number }>('POST', '/api/household/onboard', body),
   deleteMember: (id: string) => call('DELETE', `/api/household/members/${id}`),
   saveSettings: (s: State['household']) => call('PUT', '/api/household/settings', s),
 };

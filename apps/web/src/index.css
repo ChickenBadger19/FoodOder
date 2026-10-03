@@ -1,20 +1,100 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --font-sans: "Manrope", system-ui, sans-serif;
-  --color-ground: #F7F6F2;
-  --color-ink: #1C1C1A;
-  --color-muted: #5B5B57;
-  --color-line: #E6E4DC;
-  --color-line-strong: #D6D4CC;
-  --color-green: #1F6B3A;
-  --color-green-soft: #E3F0E7;
-  --color-amber: #8A4B00;
-  --color-amber-soft: #FBEBD3;
-  --color-red: #B42318;
-  --color-red-soft: #FBE3E0;
+@custom-variant dark (&:is(.dark *));
+
+/*
+  FoodOder palette: "greengrocer", not "AI dashboard".
+  Oat paper ground, charcoal ink, chard green as the one brand colour,
+  paprika for warnings and dietary flags, tomato for hard stops.
+  Type: Manrope. No purple, no gradients, no glassmorphism.
+*/
+:root {
+  --radius: 1rem;
+
+  --background: oklch(0.962 0.013 85);          /* oat */
+  --foreground: oklch(0.24 0.008 70);           /* charcoal */
+  --card: oklch(0.995 0.004 90);                /* paper */
+  --card-foreground: oklch(0.24 0.008 70);
+  --popover: oklch(0.995 0.004 90);
+  --popover-foreground: oklch(0.24 0.008 70);
+
+  --primary: oklch(0.44 0.095 155);             /* chard green */
+  --primary-foreground: oklch(0.985 0.005 90);
+  --secondary: oklch(0.925 0.016 85);           /* sand */
+  --secondary-foreground: oklch(0.3 0.01 70);
+  --muted: oklch(0.93 0.012 85);
+  --muted-foreground: oklch(0.48 0.012 70);     /* stone */
+  --accent: oklch(0.93 0.03 150);               /* sage wash, hover only */
+  --accent-foreground: oklch(0.3 0.06 155);
+
+  --warning: oklch(0.47 0.12 55);               /* paprika */
+  --warning-foreground: oklch(0.985 0.005 90);
+  --destructive: oklch(0.5 0.19 28);            /* tomato */
+  --destructive-foreground: oklch(0.985 0.005 90);
+
+  --border: oklch(0.88 0.014 85);
+  --input: oklch(0.86 0.016 85);
+  --ring: oklch(0.44 0.095 155);
 }
 
-html, body, #root { height: 100%; }
-body { margin: 0; background: var(--color-ground); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
-input, button { font: inherit; }
+.dark {
+  --background: oklch(0.2 0.008 70);
+  --foreground: oklch(0.94 0.01 85);
+  --card: oklch(0.25 0.009 70);
+  --card-foreground: oklch(0.94 0.01 85);
+  --popover: oklch(0.25 0.009 70);
+  --popover-foreground: oklch(0.94 0.01 85);
+  --primary: oklch(0.72 0.12 155);
+  --primary-foreground: oklch(0.18 0.03 155);
+  --secondary: oklch(0.3 0.01 70);
+  --secondary-foreground: oklch(0.94 0.01 85);
+  --muted: oklch(0.3 0.01 70);
+  --muted-foreground: oklch(0.7 0.012 80);
+  --accent: oklch(0.32 0.03 155);
+  --accent-foreground: oklch(0.94 0.01 85);
+  --warning: oklch(0.78 0.13 65);
+  --warning-foreground: oklch(0.2 0.03 60);
+  --destructive: oklch(0.7 0.17 25);
+  --destructive-foreground: oklch(0.18 0.02 25);
+  --border: oklch(0.34 0.01 70);
+  --input: oklch(0.36 0.01 70);
+  --ring: oklch(0.72 0.12 155);
+}
+
+@theme inline {
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --spacing-13: 3.25rem;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html, body, #root { height: 100%; }
+  body { @apply bg-background text-foreground font-sans antialiased; margin: 0; }
+  input, button, select { font: inherit; }
+}

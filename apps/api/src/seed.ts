@@ -111,9 +111,9 @@ export const RECIPES: Recipe[] = [
 ];
 
 export const MEMBERS: Member[] = [
-  { id: 'jeff', name: 'Jeff', eatsByDefault: true, constraints: [] },
-  { id: 'alex', name: 'Alex', eatsByDefault: true, constraints: [{ kind: 'dislike', strictness: 'preference', itemId: 'coriander' }] },
-  { id: 'sam', name: 'Sam', eatsByDefault: true, constraints: [{ kind: 'gluten_free', strictness: 'strict' }] },
+  { id: 'jeff', name: 'Jeff', age: 42, eatsByDefault: true, constraints: [] },
+  { id: 'alex', name: 'Alex', age: 39, eatsByDefault: true, constraints: [{ kind: 'dislike', strictness: 'preference', itemId: 'coriander' }] },
+  { id: 'sam', name: 'Sam', age: 9, eatsByDefault: true, constraints: [{ kind: 'gluten_free', strictness: 'strict' }] },
 ];
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
@@ -134,22 +134,30 @@ export const STOCK: StockItem[] = [
   { id: 'st13', itemId: 'loo-roll', qty: 2, unit: 'count', confidence: 'exact', location: 'household', freeFrom: [], boughtAt: daysAgo(23) },
 ];
 
-export function seed(store: Store) {
+/**
+ * Catalogue, substitutions and recipes are always seeded. The demo household (people, stock, running
+ * list, preferences) only with `demo`, otherwise the app starts on the onboarding flow.
+ */
+export function seed(store: Store, opts: { demo?: boolean } = {}) {
   for (const i of ITEMS) store.upsertItem(i);
   for (const s of SUBSTITUTIONS) store.upsertSubstitution(s);
   for (const r of RECIPES) store.upsertRecipe(r);
+  store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
+  if (!opts.demo) { store.setSetting('onboarded', false); return; }
   for (const m of MEMBERS) store.upsertMember(m);
   for (const s of STOCK) store.upsertStock(s);
   store.upsertListItem({ id: newId('li_'), text: 'bleach', itemId: 'bleach', qty: null, addedVia: 'chat', status: 'open', createdAt: new Date().toISOString() });
   store.upsertListItem({ id: newId('li_'), text: 'bin bags', itemId: 'bin-bags', qty: null, addedVia: 'manual', status: 'open', createdAt: new Date().toISOString() });
   store.upsertPref({ itemId: 'beef-mince', retailer: 'mock', productId: 'm1', alwaysAsk: false });
   store.upsertPref({ itemId: 'bleach', retailer: 'mock', productId: 'h1', alwaysAsk: false });
-  store.setSetting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] });
+  store.setSetting('meMemberId', 'jeff');
+  store.setSetting('onboarded', true);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('seed.ts')) {
   const file = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
+  const demo = process.argv.includes('--demo') || process.env.FOODODER_DEMO === '1';
   const store = new Store(file);
-  seed(store);
-  console.log(`Seeded ${file}: ${ITEMS.length} items, ${RECIPES.length} recipes, ${MEMBERS.length} people, ${STOCK.length} stock lines.`);
+  seed(store, { demo });
+  console.log(`Seeded ${file}: ${ITEMS.length} items, ${RECIPES.length} recipes${demo ? `, demo household (${MEMBERS.length} people, ${STOCK.length} stock lines)` : ''}.`);
 }

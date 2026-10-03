@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { addDays, api, CHANGED, dateLabel, dayName, isoToday, notifyChanged, type Plan, type Slot, type State } from '../api';
 import { Badge, Card, Notice, Pill, Primary, Spinner, titleCase } from '../ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { XIcon } from 'lucide-react';
 
 const SLOTS: Slot[] = ['breakfast', 'lunch', 'dinner'];
 
@@ -32,13 +37,13 @@ export function WeekScreen() {
     <div className="flex flex-col gap-4 pt-3">
       <header className="flex items-center justify-between">
         <div className="font-extrabold">This week &amp; next</div>
-        <span className="text-xs font-semibold text-muted">{toShop} meal{toShop === 1 ? '' : 's'} planned</span>
+        <span className="text-xs font-semibold text-muted-foreground">{toShop} meal{toShop === 1 ? '' : 's'} planned</span>
       </header>
       {error && <Notice tone="red">{error}</Notice>}
 
       {week.unscheduled.length > 0 && (
         <Card tone="dashed">
-          <div className="text-xs font-bold text-muted mb-1">Not on a day yet</div>
+          <div className="text-xs font-bold text-muted-foreground mb-1">Not on a day yet</div>
           {week.unscheduled.map(p => (
             <div key={p.id} className="flex items-center justify-between gap-2 py-1">
               <span className="text-sm font-bold">{recipeName(p.recipeId)} · {p.servings}</span>
@@ -55,11 +60,11 @@ export function WeekScreen() {
         return (
           <section key={date} className={`flex flex-col gap-2 ${past ? 'opacity-60' : ''}`}>
             <div className="flex items-baseline justify-between">
-              <h2 className={`m-0 text-[15px] font-extrabold ${isToday ? 'text-green' : ''}`}>{dayName(date)}{isToday ? ' · today' : ''}</h2>
-              <span className="text-xs font-semibold text-muted">{dateLabel(date)}</span>
+              <h2 className={`m-0 text-[15px] font-extrabold ${isToday ? 'text-primary' : ''}`}>{dayName(date)}{isToday ? ' · today' : ''}</h2>
+              <span className="text-xs font-semibold text-muted-foreground">{dateLabel(date)}</span>
             </div>
             {plans.length === 0 && !adding && (
-              <button onClick={() => setAdding({ date, slot: 'dinner' })} className="text-left text-sm font-semibold text-muted border-[1.5px] border-dashed border-line-strong rounded-2xl px-3 py-3 bg-white/60">+ Add a meal</button>
+              <button onClick={() => setAdding({ date, slot: 'dinner' })} className="text-left text-sm font-semibold text-muted-foreground border-[1.5px] border-dashed border-input rounded-2xl px-3 py-3 bg-card/60">+ Add a meal</button>
             )}
             {plans.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot)).map(p => {
               const eaters = p.eaterIds.map(member).filter(Boolean);
@@ -69,10 +74,10 @@ export function WeekScreen() {
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold">{recipeName(p.recipeId)}{p.status === 'cooked' ? ' · cooked' : ''}</div>
-                      <div className="text-xs font-semibold text-muted">{titleCase(p.slot)} · {p.servings} portions · {everyone ? 'everyone' : eaters.map(m => m!.name).join(', ') || 'nobody?'}</div>
+                      <div className="text-xs font-semibold text-muted-foreground">{titleCase(p.slot)} · {p.servings} portions · {everyone ? 'everyone' : eaters.map(m => m!.name).join(', ') || 'nobody?'}</div>
                     </div>
                     {p.status === 'planned' && <Pill onClick={async () => { await api.cooked(p.id); notifyChanged(); }}>Cooked</Pill>}
-                    <button aria-label="Remove" onClick={async () => { await api.deletePlan(p.id); notifyChanged(); }} className="w-9 h-9 rounded-full text-muted">×</button>
+                    <button aria-label="Remove" onClick={async () => { await api.deletePlan(p.id); notifyChanged(); }} className="w-9 h-9 rounded-full text-muted-foreground">×</button>
                   </div>
                   {p.status === 'planned' && (
                     <div className="flex items-center gap-1.5 flex-wrap mt-2">
@@ -81,7 +86,7 @@ export function WeekScreen() {
                         const rule = m.constraints.some(c => c.kind !== 'dislike');
                         return (
                           <button key={m.id} onClick={() => change(p, { eaterIds: on ? p.eaterIds.filter(x => x !== m.id) : [...p.eaterIds, m.id] })}
-                            className={`text-[11px] font-extrabold px-2.5 py-1.5 rounded-full border-[1.5px] ${on ? (rule ? 'bg-amber text-white border-amber' : 'bg-ink text-white border-ink') : 'bg-white border-line-strong text-muted'}`}>
+                            className={`text-[11px] font-extrabold px-2.5 py-1.5 rounded-full border-[1.5px] ${on ? (rule ? 'bg-warning text-white border-warning' : 'bg-foreground text-white border-ink') : 'bg-card border-input text-muted-foreground'}`}>
                             {m.name}{rule && on ? ' · rules' : ''}
                           </button>
                         );
@@ -98,7 +103,7 @@ export function WeekScreen() {
               );
             })}
             {plans.length > 0 && !adding && (
-              <button onClick={() => setAdding({ date, slot: 'dinner' })} className="text-left text-xs font-bold text-green px-1">+ Another meal (e.g. something different for one person)</button>
+              <button onClick={() => setAdding({ date, slot: 'dinner' })} className="text-left text-xs font-bold text-primary px-1">+ Another meal (e.g. something different for one person)</button>
             )}
             {adding?.date === date && (
               <AddMeal state={state} date={date} slot={adding.slot} onClose={() => setAdding(null)} onAsk={() => nav('/')} />
@@ -108,7 +113,7 @@ export function WeekScreen() {
       })}
 
       <Primary tone="ink" onClick={async () => { const o = await api.propose(); nav(`/basket/${o.id}`); }} disabled={toShop === 0 && state.list.length === 0}>Build the basket for these meals</Primary>
-      <div className="text-center text-xs font-semibold text-muted">Or <Link to="/" className="text-green font-bold">ask</Link> for something: "pancakes for breakfast sunday just me and alex".</div>
+      <div className="text-center text-xs font-semibold text-muted-foreground">Or <Link to="/" className="text-primary font-bold">ask</Link> for something: "pancakes for breakfast sunday just me and alex".</div>
     </div>
   );
 }
@@ -131,23 +136,30 @@ function AddMeal({ state, date, slot: initialSlot, onClose, onAsk }: { state: St
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <div className="text-sm font-bold">Add to {dayName(date)}</div>
-          <button onClick={onClose} aria-label="Cancel" className="w-9 h-9 rounded-full text-muted text-xl">×</button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Cancel"><XIcon /></Button>
         </div>
-        <label className="text-xs font-bold text-muted" htmlFor="recipe">Saved recipe</label>
-        <select id="recipe" value={recipeId} onChange={e => setRecipeId(e.target.value)} className="text-sm font-semibold px-3 py-3 rounded-xl border-[1.5px] border-line-strong bg-white">
-          {state.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
-        <div className="flex gap-1.5">{SLOTS.map(s => <Pill key={s} active={slot === s} onClick={() => setSlot(s)}>{titleCase(s)}</Pill>)}</div>
+        <Label htmlFor="recipe">Saved recipe</Label>
+        <Select value={recipeId} onValueChange={setRecipeId}>
+          <SelectTrigger id="recipe" aria-label="Saved recipe"><SelectValue placeholder="Choose a recipe" /></SelectTrigger>
+          <SelectContent>
+            {state.recipes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Label>Meal</Label>
+        <ToggleGroup type="single" value={slot} onValueChange={v => v && setSlot(v as Slot)} variant="soft">
+          {SLOTS.map(s => <ToggleGroupItem key={s} value={s}>{titleCase(s)}</ToggleGroupItem>)}
+        </ToggleGroup>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-muted">Portions</span>
+          <Label>Portions</Label>
           <Pill onClick={() => setServings(s => Math.max(1, s - 1))}>−</Pill><b className="text-sm">{servings}</b><Pill onClick={() => setServings(s => s + 1)}>+</Pill>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <Label>Who's eating</Label>
+        <ToggleGroup type="multiple" value={eaterIds} onValueChange={setEaterIds}>
           {state.members.map(m => {
-            const on = eaterIds.includes(m.id);
-            return <Pill key={m.id} active={on} onClick={() => setEaterIds(ids => on ? ids.filter(x => x !== m.id) : [...ids, m.id])}>{m.name}</Pill>;
+            const rule = m.constraints.some(c => c.kind !== 'dislike');
+            return <ToggleGroupItem key={m.id} value={m.id} variant={rule ? 'warning' : 'default'}>{m.name}{rule ? ' · rules' : ''}</ToggleGroupItem>;
           })}
-        </div>
+        </ToggleGroup>
         <div className="flex gap-2">
           <div className="flex-1"><Primary onClick={add} disabled={busy || !recipeId}>Add meal</Primary></div>
           <Pill onClick={onAsk}>Ask for a new one</Pill>

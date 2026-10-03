@@ -36,11 +36,11 @@ export function AskBox({ state, placeholder, initial = '', autoFocus = false, on
   return (
     <div className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-2.5">
-        {!compact && <label htmlFor="ask" className="text-[13px] font-semibold text-muted">Recipe, portions, day, who's eating, or something you need</label>}
+        {!compact && <label htmlFor="ask" className="text-[13px] font-semibold text-muted-foreground">Recipe, portions, day, who's eating, or something you need</label>}
         <div className="flex gap-2">
           <input id="ask" value={text} onChange={e => setText(e.target.value)} autoFocus={autoFocus} placeholder={placeholder ?? 'lasagne for 6 on friday without sam, and we need bleach'}
-            className="flex-1 min-w-0 text-[15px] px-3.5 py-3.5 rounded-2xl border-[1.5px] border-line-strong bg-white" />
-          <button type="submit" disabled={busy} aria-label="Send" className="w-13 rounded-2xl bg-green text-white flex items-center justify-center disabled:opacity-60">
+            className="flex-1 min-w-0 text-[15px] px-3.5 py-3.5 rounded-2xl border-[1.5px] border-input bg-card" />
+          <button type="submit" disabled={busy} aria-label="Send" className="w-13 rounded-2xl bg-primary text-white flex items-center justify-center disabled:opacity-60">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
           </button>
         </div>
@@ -57,37 +57,37 @@ export function AskBox({ state, placeholder, initial = '', autoFocus = false, on
       {error && <Notice tone="red">{error}</Notice>}
 
       {results && results.length > 0 && (
-        <Section title="Understood as" aside={<button className="text-green font-bold" onClick={() => setResults(null)}>clear</button>}>
+        <Section title="Understood as" aside={<button className="text-primary font-bold" onClick={() => setResults(null)}>clear</button>}>
           {results.map((r, i) => (
             <Card key={i}>
               {r.kind === 'recipe' && r.recipe && (
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-bold">{r.recipe.name}</div>
-                    <div className="text-xs font-semibold text-muted">
+                    <div className="text-xs font-semibold text-muted-foreground">
                       {r.servings} portions{r.day ? ` · ${titleCase(r.day)}` : ''}{r.slot && r.slot !== 'dinner' ? ` ${r.slot}` : ''} · {r.eaters?.join(', ')} · {r.via === 'llm' ? 'generated, please check' : 'saved recipe'}
                     </div>
                   </div>
-                  <Link to={recipeLink(r, r.recipe.id)} className="text-xs font-bold px-3 py-2 rounded-full bg-ink text-white whitespace-nowrap">Review</Link>
+                  <Link to={recipeLink(r, r.recipe.id)} className="text-xs font-bold px-3 py-2 rounded-full bg-foreground text-white whitespace-nowrap">Review</Link>
                 </div>
               )}
               {r.kind === 'recipe' && !r.recipe && r.candidates?.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <div className="text-sm font-bold">Which "{r.query}"?</div>
-                  <div className="flex gap-2 flex-wrap">{r.candidates.map((c: any) => <Link key={c.id} to={recipeLink(r, c.id)} className="text-xs font-bold px-3 py-2 rounded-full border-[1.5px] border-line-strong bg-white">{c.name}</Link>)}</div>
+                  <div className="flex gap-2 flex-wrap">{r.candidates.map((c: any) => <Link key={c.id} to={recipeLink(r, c.id)} className="text-xs font-bold px-3 py-2 rounded-full border-[1.5px] border-input bg-card">{c.name}</Link>)}</div>
                 </div>
               )}
               {r.kind === 'recipe' && !r.recipe && !r.candidates?.length && (
-                <div className="text-sm font-semibold text-amber">No recipe called "{r.query}" yet. Paste one on the Household screen or enable recipe generation.</div>
+                <div className="text-sm font-semibold text-warning">No recipe called "{r.query}" yet. Paste one on the Household screen or enable recipe generation.</div>
               )}
               {r.kind === 'list' && (
                 <div className="text-sm font-semibold">
                   Added <b>{r.added.text}</b> to the running list{r.merged ? ' (was already on it)' : ''}
-                  {r.addedToDrafts?.length ? <> and to your open basket draft (<Link to={`/basket/${r.addedToDrafts[0]}`} className="text-green">see it</Link>)</> : ''}.
+                  {r.addedToDrafts?.length ? <> and to your open basket draft (<Link to={`/basket/${r.addedToDrafts[0]}`} className="text-primary">see it</Link>)</> : ''}.
                 </div>
               )}
               {r.kind === 'out_of' && <div className="text-sm font-semibold">Marked <b>{r.item}</b> as out of stock and added it to the list{r.addedToDrafts?.length ? ' and your open basket' : ''}.</div>}
-              {r.kind === 'stock_add' && (r.stock ? <div className="text-sm font-semibold">Added {r.stock.qty} {r.stock.unit === 'count' ? '' : r.stock.unit} <b>{r.stock.itemId}</b> to stock.</div> : <div className="text-sm font-semibold text-amber">{r.error}</div>)}
+              {r.kind === 'stock_add' && (r.stock ? <div className="text-sm font-semibold">Added {r.stock.qty} {r.stock.unit === 'count' ? '' : r.stock.unit} <b>{r.stock.itemId}</b> to stock.</div> : <div className="text-sm font-semibold text-warning">{r.error}</div>)}
             </Card>
           ))}
         </Section>

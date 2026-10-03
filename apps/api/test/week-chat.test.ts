@@ -18,7 +18,7 @@ describe('dates', () => {
 });
 
 describe('week planning and chat-anywhere', () => {
-  const { app, store } = buildApp({ dbFile: ':memory:' });
+  const { app, store } = buildApp({ dbFile: ':memory:', demo: true });
   beforeAll(async () => { await app.ready(); });
   afterAll(async () => { await app.close(); });
   const json = async (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => {

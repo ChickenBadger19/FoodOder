@@ -11,7 +11,10 @@ export type AllergenTag =
   | 'meat' | 'animal';
 
 export type ConstraintKind =
-  | 'gluten_free' | 'dairy_free' | 'nut_free' | 'egg_free' | 'vegetarian' | 'vegan' | 'dislike';
+  | 'gluten_free' | 'dairy_free' | 'nut_free' | 'egg_free' | 'soy_free' | 'fish_free' | 'shellfish_free' | 'sesame_free'
+  | 'vegetarian' | 'pescatarian' | 'vegan' | 'dislike';
+
+export const CONSTRAINT_KINDS: ConstraintKind[] = ['gluten_free', 'dairy_free', 'nut_free', 'egg_free', 'soy_free', 'fish_free', 'shellfish_free', 'sesame_free', 'vegetarian', 'pescatarian', 'vegan', 'dislike'];
 
 export type Strictness = 'preference' | 'avoid' | 'strict';
 
@@ -67,8 +70,24 @@ export interface Constraint {
 export interface Member {
   id: string;
   name: string;
+  /** Age in years, if given. Drives portion sizing and child-safety notes. */
+  age?: number | null;
   eatsByDefault: boolean;
   constraints: Constraint[];
+}
+
+/** How much of an adult portion a person typically eats. */
+export function portionFactor(age: number | null | undefined): number {
+  if (age === null || age === undefined) return 1;
+  if (age < 2) return 0.25;
+  if (age < 5) return 0.5;
+  if (age < 12) return 0.75;
+  return 1;
+}
+
+/** Portions to cook for these people, never below 1. */
+export function servingsFor(members: Pick<Member, 'age'>[]): number {
+  return Math.max(1, Math.ceil(members.reduce((n, m) => n + portionFactor(m.age), 0)));
 }
 
 export type StockLocation = 'fridge' | 'freezer' | 'cupboard' | 'household';

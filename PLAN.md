@@ -367,6 +367,24 @@ and adds it to the list. Items the catalogue has never seen are matched by
 name against the retailer and become catalogue entries once you approve a
 product for them, so next time they match instantly.
 
+### 4.10 Set-up (sign-up) flow
+
+First run asks for the things the whole app depends on, in three steps:
+
+1. **You**: name, age, allergies and intolerances (gluten, dairy, nuts and
+   peanuts, egg, soya, fish, shellfish, sesame), each with a strictness
+   (allergy or coeliac = hard block including "may contain"; intolerance =
+   avoid but allow labelled products; prefers to avoid = only reorders), a diet
+   (vegetarian, pescatarian, vegan), dislikes.
+2. **Who else eats here**: the same profile per person. Ages size portions
+   (under 2 a quarter, under 5 half, under 12 three quarters of an adult).
+3. **How you shop**: usual supermarket, own-brand OK, categories where you
+   always pick the exact product.
+
+Everything is editable later from Household. There is no account or
+password in the prototype; when it becomes multi-household, this flow sits
+after sign-in.
+
 ---
 
 ## 5. Data model (Drizzle / SQLite)
@@ -623,8 +641,8 @@ The repo now contains a working prototype against a mock retailer. See `README.m
 - `packages/retailers`: `Retailer` interface with `modes`, mock catalogue, hand-off helpers.
 - `apps/api`: Fastify + SQLite, seeded household, 7-step end-to-end test of ask → plan → propose →
   blocked line → approve → delivered → cooked.
-- `apps/web`: installable PWA with the wireframed screens plus a Week planner and a chat sheet on
-  every screen, driven through the whole flow in Chromium.
+- `apps/web`: installable PWA on shadcn/ui components with a custom palette; wireframed screens plus
+  a Week planner, a chat sheet on every screen, and the three-step set-up flow, all driven in Chromium.
 - Not built yet: real retailer connectors, URL recipe import, barcode scanning, push notifications,
   multi-retailer comparison. The LLM recipe generator is wired but needs an API key.
 
