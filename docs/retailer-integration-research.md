@@ -26,7 +26,7 @@ research environment, so some facts come from search snippets and are marked as 
    rollout "later this year") has no public launch news as of early October 2026. Tesco also signed a
    three-year Mistral AI deal. All first-party; no sign of opening basket access to third-party agents.
 
-## What this means for FoodOder
+## What this means for Foodify
 
 Design the retailer layer as **four hand-off tiers per retailer**, and pick the best available one at
 runtime. The core (inventory, recipes, scaling, dietary rules, approval) never knows which tier is used.
@@ -92,7 +92,7 @@ contact at any of the nine retailers (none found).
 
 What a retailer gets from partnering rather than blocking:
 
-- **Incremental basket, not substitution.** FoodOder sends a complete, de-duplicated, dietary-safe
+- **Incremental basket, not substitution.** Foodify sends a complete, de-duplicated, dietary-safe
   basket the shopper has already approved, including household extras. Higher basket value, fewer
   abandoned "I'll do it later" lists.
 - **Fewer wrong-product returns and complaints.** Free-from matching uses the retailer's own allergen

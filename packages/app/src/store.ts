@@ -1,4 +1,4 @@
-import type { Item, Member, ProductPreference, Recipe, StockItem, Substitution } from '@foododer/core';
+import type { Item, Member, ProductPreference, Recipe, StockItem, Substitution } from '@foodify/core';
 
 /**
  * Minimal SQL driver so the same Store runs on better-sqlite3 (Node) and Cloudflare D1 (Workers).

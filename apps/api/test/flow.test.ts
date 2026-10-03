@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { buildApp, type BuildOptions } from '../src/server.js';
-import type { Store } from '@foododer/app';
+import type { Store } from '@foodify/app';
 
 process.env.NODE_ENV = 'test';
 

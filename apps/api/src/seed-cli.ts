@@ -1,7 +1,7 @@
-import { prepareStore, Store } from '@foododer/app';
+import { prepareStore, Store } from '@foodify/app';
 import { sqliteDriver } from './server.js';
 
-const file = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
+const file = process.env.FOODIFY_DB ?? 'data/foodify.sqlite';
 const store = new Store(sqliteDriver(file));
-await prepareStore(store, { demo: process.env.FOODODER_DEMO === '1' });
+await prepareStore(store, { demo: process.env.FOODIFY_DEMO === '1' });
 console.log(`seeded ${file}`);

@@ -59,7 +59,7 @@ export const api = {
 export const gbp = (n: number) => `£${n.toFixed(2)}`;
 
 /** Fired after chat or any screen changes data, so other mounted screens reload. */
-export const CHANGED = 'foododer:changed';
+export const CHANGED = 'foodify:changed';
 export const notifyChanged = () => window.dispatchEvent(new CustomEvent(CHANGED));
 
 export function isoToday(): string {

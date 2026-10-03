@@ -1,18 +1,18 @@
 {
-  "name": "@foododer/worker",
+  "name": "@foodify/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:create": "wrangler d1 create foododer",
+    "db:create": "wrangler d1 create foodify",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
     "test": "echo \"tested via apps/api\""
   },
   "dependencies": {
-    "@foododer/app": "workspace:*",
+    "@foodify/app": "workspace:*",
     "hono": "^4.9.0"
   },
   "devDependencies": {

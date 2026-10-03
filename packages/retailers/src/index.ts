@@ -1,4 +1,4 @@
-import type { Product } from '@foododer/core';
+import type { Product } from '@foodify/core';
 
 export type RetailerId = 'tesco' | 'sainsburys' | 'ocado' | 'asda' | 'morrisons' | 'waitrose' | 'mock';
 

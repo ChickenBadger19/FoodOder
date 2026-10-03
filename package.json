@@ -1,5 +1,5 @@
 {
-  "name": "foododer",
+  "name": "foodify",
   "private": true,
   "version": "0.1.0",
   "description": "Say what you want to cook; it scales the recipe, checks your stock, builds a supermarket basket and waits for your approval.",
@@ -9,12 +9,12 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./apps/* dev",
-    "dev:api": "pnpm --filter @foododer/api dev",
-    "dev:web": "pnpm --filter @foododer/web dev",
+    "dev:api": "pnpm --filter @foodify/api dev",
+    "dev:web": "pnpm --filter @foodify/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "seed": "pnpm --filter @foododer/api seed"
+    "seed": "pnpm --filter @foodify/api seed"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

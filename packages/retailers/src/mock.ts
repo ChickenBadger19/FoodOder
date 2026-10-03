@@ -1,4 +1,4 @@
-import type { Product } from '@foododer/core';
+import type { Product } from '@foodify/core';
 import type { BasketLine, Retailer, SessionStatus } from './index.js';
 
 type P = Omit<Product, 'retailer'>;

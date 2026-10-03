@@ -10,13 +10,13 @@ importers:
 
   apps/api:
     dependencies:
-      '@foododer/app':
+      '@foodify/app':
         specifier: workspace:*
         version: link:../../packages/app
-      '@foododer/core':
+      '@foodify/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@foododer/retailers':
+      '@foodify/retailers':
         specifier: workspace:*
         version: link:../../packages/retailers
       '@hono/node-server':
@@ -102,7 +102,7 @@ importers:
 
   apps/worker:
     dependencies:
-      '@foododer/app':
+      '@foodify/app':
         specifier: workspace:*
         version: link:../../packages/app
       hono:
@@ -124,10 +124,10 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.80.0
         version: 0.80.0(zod@4.6.5)
-      '@foododer/core':
+      '@foodify/core':
         specifier: workspace:*
         version: link:../core
-      '@foododer/retailers':
+      '@foodify/retailers':
         specifier: workspace:*
         version: link:../retailers
       hono:
@@ -152,7 +152,7 @@ importers:
 
   packages/retailers:
     dependencies:
-      '@foododer/core':
+      '@foodify/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

@@ -1,4 +1,4 @@
-import { parseIngredient, resolveLines, type Item, type Member, type Recipe, type StockItem, type Substitution } from '@foododer/core';
+import { parseIngredient, resolveLines, type Item, type Member, type Recipe, type StockItem, type Substitution } from '@foodify/core';
 import { Store, newId } from './store.js';
 
 type I = Omit<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'> & Partial<Pick<Item, 'aliases' | 'category' | 'allergens' | 'isStaple'>>;

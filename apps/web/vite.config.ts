@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'FoodOder',
-        short_name: 'FoodOder',
+        name: 'Foodify',
+        short_name: 'Foodify',
         description: 'Say what you want to cook. It checks your stock and builds a basket for your approval.',
         theme_color: '#752B69',
         background_color: '#FCF9FB',

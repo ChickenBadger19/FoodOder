@@ -4,8 +4,8 @@ import { z, ZodError } from 'zod';
 import {
   activeConstraints, deductCooked, parseAsk, parseIngredient, resolveItem, resolveLines, scaleRecipe, applySubstitutions, formatQty, servingsFor,
   CONSTRAINT_KINDS, type Member, type Recipe, type StockItem,
-} from '@foododer/core';
-import { MockRetailer, type Retailer } from '@foododer/retailers';
+} from '@foodify/core';
+import { MockRetailer, type Retailer } from '@foodify/retailers';
 import { Store, newId, type Plan, type ListItem } from './store.js';
 import { seed } from './seed.js';
 import { applyLineChange, appendListLine, promoteAdhocItems, proposeOrder, type DraftOrder } from './services/propose.js';
@@ -26,7 +26,7 @@ export async function prepareStore(store: Store, opts: { demo?: boolean } = {}):
 }
 
 /**
- * The FoodOder API as a Hono app. Runtime-neutral: the host (Node or Cloudflare Workers) supplies the
+ * The Foodify API as a Hono app. Runtime-neutral: the host (Node or Cloudflare Workers) supplies the
  * database driver and serves the PWA's static files; everything under /api lives here.
  */
 export function createApp({ store, retailer: retailerOpt, anthropicApiKey }: AppOptions) {

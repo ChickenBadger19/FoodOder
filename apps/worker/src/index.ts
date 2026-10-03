@@ -1,11 +1,11 @@
-import { createApp, prepareStore, Store, type SqlDriver } from '@foododer/app';
+import { createApp, prepareStore, Store, type SqlDriver } from '@foodify/app';
 
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   ANTHROPIC_API_KEY?: string;
   /** "1" seeds the demo household on first run; anything else seeds the catalogue only. */
-  FOODODER_DEMO?: string;
+  FOODIFY_DEMO?: string;
 }
 
 /** Cloudflare D1 behind the async SqlDriver interface the shared Store expects. */
@@ -36,7 +36,7 @@ function appFor(env: Env) {
   if (!ready) {
     ready = (async () => {
       const store = new Store(d1Driver(env.DB));
-      await prepareStore(store, { demo: env.FOODODER_DEMO === '1' });
+      await prepareStore(store, { demo: env.FOODIFY_DEMO === '1' });
       return createApp({ store, anthropicApiKey: env.ANTHROPIC_API_KEY });
     })();
     ready.catch(() => { ready = undefined; });

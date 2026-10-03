@@ -1,5 +1,5 @@
 {
-  "name": "@foododer/api",
+  "name": "@foodify/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@foododer/app": "workspace:*",
-    "@foododer/core": "workspace:*",
-    "@foododer/retailers": "workspace:*",
+    "@foodify/app": "workspace:*",
+    "@foodify/core": "workspace:*",
+    "@foodify/retailers": "workspace:*",
     "@hono/node-server": "^1.19.0",
     "better-sqlite3": "^12.2.0",
     "hono": "^4.9.0"

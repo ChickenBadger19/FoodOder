@@ -30,7 +30,7 @@ export function Ask() {
   return (
     <div className="flex flex-col gap-6 pt-4 min-h-full">
       <header className="flex items-center justify-between">
-        <div className="font-display label-micro text-[12px] tracking-[0.18em] font-extrabold">Foododer</div>
+        <div className="font-display label-micro text-[12px] tracking-[0.18em] font-extrabold">Foodify</div>
         {retailer && (
           <Link to="/household" className={`label-micro px-2 py-1.5 rounded-[3px] border ${retailer.session.connected ? 'border-foreground/35 text-foreground' : 'border-destructive text-destructive'}`}>
             {retailer.name}{retailer.session.expiresAt ? ` · ${Math.max(0, Math.round((new Date(retailer.session.expiresAt).getTime() - Date.now()) / 864e5))} days` : ''}

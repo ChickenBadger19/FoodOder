@@ -28,7 +28,7 @@ The agency owns the brand idea; the product studio owns the experience. Both wor
 2. **Organising idea.** One line the whole product expresses. Proposal: **"Knows your kitchen."**
    It knows who eats, what's in the cupboard, what's safe. The UI should feel like a trusted
    shopkeeper who remembers you, not a chatbot.
-3. **Naming and voice.** "FoodOder" is a working title. The agency would test names; the voice
+3. **Naming and voice.** "Foodify" is a working title. The agency would test names; the voice
    would be plain, warm, a little dry, never cute. Copy decks come before screens.
 4. **Visual territories.** Two or three distinct art directions, each a coherent world (type,
    colour, layout grammar, photography or illustration policy, motion), presented as a few key
@@ -99,7 +99,7 @@ plus the label and card variants.
 
 ## How to test it (the product, and with people)
 
-Run it locally (README), or `docker build -t foododer . && docker run -p 8787:8787 foododer`, then
+Run it locally (README), or `docker build -t foodify . && docker run -p 8787:8787 foodify`, then
 open http://localhost:8787 on a phone on the same network and "Add to Home Screen".
 
 For user testing, recruit five households with at least one allergy or coeliac member. Give each

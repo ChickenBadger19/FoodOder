@@ -1,5 +1,5 @@
 {
-  "name": "@foododer/app",
+  "name": "@foodify/app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
   "scripts": { "typecheck": "tsc --noEmit", "build": "tsc --noEmit", "test": "echo \"tested via apps/api\"" },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
-    "@foododer/core": "workspace:*",
-    "@foododer/retailers": "workspace:*",
+    "@foodify/core": "workspace:*",
+    "@foodify/retailers": "workspace:*",
     "hono": "^4.9.0",
     "zod": "^4.1.0"
   },

@@ -53,7 +53,7 @@ export function Onboarding() {
     <div className="flex flex-col gap-4 pt-4 pb-6 min-h-full">
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-extrabold tracking-tight">FoodOder</div>
+          <div className="text-xl font-extrabold tracking-tight">Foodify</div>
           <span className="text-xs font-semibold text-muted-foreground">Step {Math.min(idx + 1, 3)} of 3</span>
         </div>
         <Progress value={Math.min(idx + 1, 3) / 3 * 100} aria-label="Set-up progress" />

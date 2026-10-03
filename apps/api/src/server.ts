@@ -4,10 +4,10 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Hono } from 'hono';
-import { createApp, prepareStore, Store, type SqlDriver } from '@foododer/app';
-import type { Retailer } from '@foododer/retailers';
+import { createApp, prepareStore, Store, type SqlDriver } from '@foodify/app';
+import type { Retailer } from '@foodify/retailers';
 
-const DB_FILE = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
+const DB_FILE = process.env.FOODIFY_DB ?? 'data/foodify.sqlite';
 const PORT = Number(process.env.PORT ?? 8787);
 
 /** better-sqlite3 behind the async SqlDriver interface the shared Store expects. */
@@ -32,7 +32,7 @@ export interface BuildOptions { dbFile?: string; retailer?: Retailer; demo?: boo
 export async function buildApp(opts: BuildOptions = {}) {
   const driver = sqliteDriver(opts.dbFile ?? DB_FILE);
   const store = new Store(driver);
-  await prepareStore(store, { demo: opts.demo ?? process.env.FOODODER_DEMO === '1' });
+  await prepareStore(store, { demo: opts.demo ?? process.env.FOODIFY_DEMO === '1' });
   const api = createApp({ store, retailer: opts.retailer, anthropicApiKey: process.env.ANTHROPIC_API_KEY });
 
   const app = new Hono();
@@ -55,6 +55,6 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve
 if (isMain) {
   const { app } = await buildApp();
   serve({ fetch: app.fetch, port: PORT }, (info) => {
-    console.log(`FoodOder API listening on http://localhost:${info.port} (db: ${DB_FILE})`);
+    console.log(`Foodify API listening on http://localhost:${info.port} (db: ${DB_FILE})`);
   });
 }

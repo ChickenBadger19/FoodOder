@@ -2,9 +2,9 @@ import {
   activeConstraints, aggregateNeeds, applySubstitutions, computeShortfall, formatQty, mergeActive, rankProducts, scaleRecipe, resolveItem,
   type ActiveConstraints, type IngredientLine,
   type Item, type MatchContext, type Member, type Product, type RankedProduct, type Shortfall, type Unit,
-} from '@foododer/core';
-import type { Retailer } from '@foododer/retailers';
-import { renderHandoffList } from '@foododer/retailers';
+} from '@foodify/core';
+import type { Retailer } from '@foodify/retailers';
+import { renderHandoffList } from '@foodify/retailers';
 import type { Store, Plan, ListItem } from '../store.js';
 
 export interface OrderLine {

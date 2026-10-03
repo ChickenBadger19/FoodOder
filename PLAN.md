@@ -1,4 +1,4 @@
-# FoodOder — Project Plan
+# Foodify — Project Plan
 
 A personal PWA where you say which recipes you want to cook, and it:
 
@@ -99,7 +99,7 @@ designed as four hand-off tiers, chosen per retailer at runtime:
 Monorepo, TypeScript end to end, one deployable backend plus a PWA.
 
 ```
-foododer/
+foodify/
 ├── apps/
 │   ├── web/        # PWA: React + Vite + vite-plugin-pwa, Tailwind. Installable on phone.
 │   ├── api/        # Node host (Hono + better-sqlite3). Serves the PWA in prod.

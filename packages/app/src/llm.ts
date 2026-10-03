@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
-import { parseIngredient, resolveLines, type Item, type Recipe } from '@foododer/core';
+import { parseIngredient, resolveLines, type Item, type Recipe } from '@foodify/core';
 
 const UNITS = ['g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'count', 'sheet', 'clove', 'slice', 'tin', 'pack', 'bunch', 'handful', 'pinch'] as const;
 

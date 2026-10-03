@@ -26,7 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
       - run: pnpm -r test
-      - run: pnpm --filter @foododer/web build
+      - run: pnpm --filter @foodify/web build
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
@@ -37,7 +37,7 @@ jobs:
           command: deploy
       - name: Smoke test the deployed Worker
         run: |
-          URL=https://foododer.jeff-cousens.workers.dev
+          URL=https://foodify.jeff-cousens.workers.dev
           echo "GET $URL/"; curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' "$URL/"
           echo "GET $URL/api/state"; curl -sS -w '\nHTTP %{http_code}\n' "$URL/api/state" | head -c 1500; echo
           echo "GET $URL/api/state (second call)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/api/state"
