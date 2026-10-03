@@ -1,6 +1,8 @@
 # Deploys the PWA + API to Cloudflare Workers (D1 + Workers Assets).
 # Needs one repository secret: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit, D1: Edit, Account Settings: Read).
 # Optional: CLOUDFLARE_ACCOUNT_ID if the token can see more than one account.
+# Optional: ANTHROPIC_API_KEY turns on recipe generation for dishes that are not saved yet
+#           (it is copied onto the Worker as a secret on every deploy).
 name: Deploy to Cloudflare
 
 on:
@@ -16,6 +18,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -35,9 +39,17 @@ jobs:
           workingDirectory: apps/worker
           packageManager: pnpm
           command: deploy
+      - name: Set the recipe-generation key on the Worker
+        if: env.ANTHROPIC_API_KEY != ''
+        working-directory: apps/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: printf '%s' "$ANTHROPIC_API_KEY" | pnpm exec wrangler secret put ANTHROPIC_API_KEY
       - name: Smoke test the deployed Worker
         run: |
           URL=https://foodify.jeff-cousens.workers.dev
           echo "GET $URL/"; curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' "$URL/"
           echo "GET $URL/api/state"; curl -sS -w '\nHTTP %{http_code}\n' "$URL/api/state" | head -c 1500; echo
           echo "GET $URL/api/state (second call)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/api/state"
+          echo "recipe generation:"; curl -sS "$URL/api/state" | python3 -c 'import json,sys; print("on" if json.load(sys.stdin)["llm"] else "off (no ANTHROPIC_API_KEY secret)")'
