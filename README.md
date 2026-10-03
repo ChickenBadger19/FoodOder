@@ -62,8 +62,10 @@ pnpm typecheck
 
 ## Design
 
-The visual direction is "Deli Counter": butcher's paper, ink, brick, mustard labels, Bricolage
-Grotesque and Instrument Sans, hairline rules and squared blocks. The reasoning, the two alternative
+The visual direction keeps the "Deli Counter" type and layout grammar (Bricolage Grotesque and
+Instrument Sans, hairline rules, squared blocks) on an evidence-based colour system: near-white
+page, white cards, one deep-plum brand colour, and safe/caution/block states separated by lightness
+and shape. The research behind the colours is in [docs/colour-research.md](./docs/colour-research.md). The reasoning, the two alternative
 territories, and how a studio would run the design process are in
 [docs/design-direction.md](./docs/design-direction.md); the territories are on the wireframe canvas.
 

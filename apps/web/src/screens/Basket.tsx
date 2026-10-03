@@ -4,15 +4,24 @@ import { api, CHANGED, gbp, type Order, type OrderLine, type Ranked } from '../a
 import { Badge, Card, Notice, Pill, Primary, Section, Spinner } from '../ui';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CopyIcon, CheckIcon } from 'lucide-react';
+import { cn as cnx } from '@/lib/utils';
+import { CopyIcon, CheckIcon, SquareCheckIcon, TriangleAlertIcon, BanIcon, CircleHelpIcon } from 'lucide-react';
 
+/**
+ * Safe / caution / block are told apart by lightness, icon shape and a spelled-out word, not hue alone
+ * (about 1 in 12 men cannot rely on red vs green). Safe is always a pale container; block is the only dark solid.
+ */
 function DietaryBadge({ r }: { r: Ranked }) {
   const d = r.dietary;
-  if (d.kind === 'verified') return <Badge tone="green">{d.allergen}-free · label</Badge>;
-  if (d.kind === 'naturally_free') return <Badge tone="green">naturally {d.allergen}-free</Badge>;
-  if (d.kind === 'may_contain') return <Badge tone={d.blocks ? 'red' : 'amber'}>may contain {d.allergen}</Badge>;
-  if (d.kind === 'contains') return <Badge tone="red">contains {d.allergen}</Badge>;
-  if (d.kind === 'unverified') return <Badge tone={d.blocks ? 'red' : 'amber'}>{d.allergen}-free unverified</Badge>;
+  if (d.kind === 'verified') return <Badge tone="green"><SquareCheckIcon aria-hidden /> Safe · {d.allergen}-free on label</Badge>;
+  if (d.kind === 'naturally_free') return <Badge tone="green"><SquareCheckIcon aria-hidden /> Safe · no {d.allergen}</Badge>;
+  if (d.kind === 'may_contain') return d.blocks
+    ? <Badge tone="red"><BanIcon aria-hidden /> Blocked · may contain {d.allergen}</Badge>
+    : <Badge tone="amber"><TriangleAlertIcon aria-hidden /> Caution · may contain {d.allergen}</Badge>;
+  if (d.kind === 'contains') return <Badge tone="red"><BanIcon aria-hidden /> Blocked · contains {d.allergen}</Badge>;
+  if (d.kind === 'unverified') return d.blocks
+    ? <Badge tone="red"><BanIcon aria-hidden /> Blocked · {d.allergen} not verified</Badge>
+    : <Badge tone="amber"><CircleHelpIcon aria-hidden /> Check · {d.allergen}-free not verified</Badge>;
   return null;
 }
 
@@ -22,7 +31,7 @@ function Line({ line, orderId, onChange, locked }: { line: OrderLine; orderId: s
   const c = line.chosen;
   const tone = line.removed ? 'dashed' : line.haveIt ? 'dashed' : line.blocked ? 'red' : 'default';
   return (
-    <Card tone={tone} className={line.removed || line.haveIt ? 'opacity-60' : ''}>
+    <Card tone={tone} className={cnx(line.removed || line.haveIt ? 'opacity-60' : '', line.blocked && !line.haveIt && !line.removed ? 'bg-block-container' : '')}>
       <div className="flex gap-2.5 items-start">
         <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
         <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -36,7 +45,7 @@ function Line({ line, orderId, onChange, locked }: { line: OrderLine; orderId: s
             {c?.reasons.filter(r => r === 'your usual' || r === 'bought before' || r.endsWith('as you said')).map(r => <Badge key={r} tone={r.endsWith('as you said') ? 'green' : 'muted'}>{r}</Badge>)}
             {c && <DietaryBadge r={c} />}
             {line.forRecipes.length > 0 && <Badge>{line.forRecipes.join(' · ')}</Badge>}
-            {line.blocked && <Badge tone="red">blocks approval</Badge>}
+            {line.blocked && <Badge tone="red"><BanIcon aria-hidden /> Blocks approval</Badge>}
             {line.haveIt && <Badge tone="green">you have it</Badge>}
           </div>
           {line.blockReason && !line.haveIt && <div className="text-xs font-semibold text-destructive">{line.blockReason}</div>}
@@ -149,7 +158,7 @@ export function BasketScreen() {
         {extras.map(l => <Line key={l.key} line={l} orderId={order.id} onChange={setOrder} locked={locked} />)}
       </Section>
 
-      {error && <Notice tone="red">{error}</Notice>}
+      {error && <Notice tone="red"><BanIcon className="inline size-3.5 mr-1 -mt-0.5" aria-hidden />{error}</Notice>}
 
       <div className="sticky bottom-0 bg-background pt-2 pb-1 flex flex-col gap-2 border-t-[1.5px] border-border">
         <div className="flex justify-between text-[13px] font-bold text-muted-foreground">
@@ -159,9 +168,15 @@ export function BasketScreen() {
         {!locked && (
           <div className="flex gap-2">
             <div className="flex-1">
-              <Primary onClick={() => approve(false)} disabled={busy || d.blockers > 0} tone={d.blockers > 0 ? 'muted' : 'green'}>
-                {d.blockers > 0 ? `Add to ${d.retailerName} · resolve ${d.blockers} first` : `Add to ${d.retailerName} basket`}
-              </Primary>
+              {d.blockers > 0 ? (
+                // Never a disabled control: a block must stay readable (WCAG 1.4.11 exempts disabled controls) and
+                // tapping it explains exactly what is blocked and why.
+                <Button size="lg" variant="outline" className="border-block-text text-block-text" onClick={() => approve(false)} disabled={busy}>
+                  <BanIcon /> Resolve {d.blockers} blocked line{d.blockers === 1 ? '' : 's'} to approve
+                </Button>
+              ) : (
+                <Primary onClick={() => approve(false)} disabled={busy}>Add to {d.retailerName} basket</Primary>
+              )}
             </div>
             <Button variant="outline" size="icon" className="size-13 rounded-2xl" onClick={copyList} aria-label="Copy as a plain list">
               {copied ? <CheckIcon className="text-primary" /> : <CopyIcon />}

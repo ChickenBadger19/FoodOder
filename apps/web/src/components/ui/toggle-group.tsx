@@ -8,9 +8,9 @@ const toggleVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-transparent border border-foreground/35 text-foreground data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground',
-        warning: 'bg-transparent border border-foreground/35 text-foreground data-[state=on]:bg-warning data-[state=on]:text-warning-foreground data-[state=on]:border-warning',
-        soft: 'bg-transparent border border-foreground/35 text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary',
+        default: 'bg-transparent border border-input text-foreground data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground',
+        warning: 'bg-transparent border border-input text-foreground data-[state=on]:bg-caution-container data-[state=on]:text-caution-text data-[state=on]:border-caution-text',
+        soft: 'bg-transparent border border-input text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary',
       },
       size: { default: 'h-9 px-3 min-w-9', sm: 'h-8 px-2.5 min-w-8', lg: 'h-11 px-4 min-w-11' },
     },

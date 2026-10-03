@@ -74,7 +74,7 @@ export function RecipeScreen() {
             const on = eaterIds.includes(m.id);
             const hasRule = m.constraints.some(c => c.kind !== 'dislike');
             return (
-              <label key={m.id} className={`flex items-center gap-1.5 text-[13px] font-bold px-3 py-2 rounded-full cursor-pointer ${on ? (hasRule ? 'bg-warning text-white' : 'bg-foreground text-white') : 'bg-card border-[1.5px] border-input'}`}>
+              <label key={m.id} className={`flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-md cursor-pointer border ${on ? (hasRule ? 'bg-caution-container text-caution-text border-caution-text' : 'bg-primary-container text-primary-on-container border-primary') : 'bg-card border-input text-foreground'}`}>
                 <input type="checkbox" checked={on} onChange={e => setEaterIds(ids => e.target.checked ? [...ids!, m.id] : ids!.filter(x => x !== m.id))} className="m-0" />
                 {m.name}{hasRule ? ` · ${m.constraints.filter(c => c.kind !== 'dislike').map(c => c.kind === 'gluten_free' ? 'GF' : c.kind.replace('_free', '-free')).join(', ')}` : ''}
               </label>

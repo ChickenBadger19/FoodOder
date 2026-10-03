@@ -4,62 +4,101 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Territory A · "Deli Counter" (see docs/design-direction.md).
-  Butcher's paper ground, ink, one brand colour (brick), mustard for dietary flags,
-  deep red only for hard stops. Bricolage Grotesque for display, Instrument Sans for text.
-  Squared corners, hairline rules, uppercase micro-labels. No green, no pills, no gradients.
+  Palette per reports/Food app colour evidence.md (docs/colour-research.md).
+  Near-white page tinted toward the brand hue below visibility (OKLCH C 0.004), pure white cards for tonal
+  hierarchy, warm near-black ink, ONE brand colour (deep plum, chosen by elimination against the UK grocer
+  hue map and because it survives red-green colour-vision deficiency as blue-grey).
+  Semantic states are separated by LIGHTNESS and SHAPE, hue is reinforcement:
+    block   = the only dark saturated solid in the system (white text 7.86:1). Red appears nowhere else.
+    caution = light amber chip with dark text (white on amber is forbidden: every standard amber fails WCAG 2).
+    safe    = pale container, never a solid, so it can never match the block by lightness.
+  Every semantic state ships with a 1px border in its text colour, an icon shape and a spelled-out word.
+  Type: Bricolage Grotesque display, Instrument Sans text (kept from the Deli Counter direction).
 */
 :root {
   --radius: 0.375rem;
 
-  --background: oklch(0.935 0.022 85);          /* butcher's paper */
-  --foreground: oklch(0.19 0.012 85);           /* ink */
-  --card: oklch(0.965 0.016 85);                /* lighter paper */
-  --card-foreground: oklch(0.19 0.012 85);
-  --popover: oklch(0.975 0.012 85);
-  --popover-foreground: oklch(0.19 0.012 85);
+  --background: #FCF9FB;            /* page, OKLCH 0.985 0.004 337 */
+  --foreground: #221A20;            /* ink, 16.2:1 on page */
+  --card: #FFFFFF;                  /* cards and sheets, 1.05:1 lift */
+  --card-foreground: #221A20;
+  --popover: #FFFFFF;
+  --popover-foreground: #221A20;
+  --container: #F3EFF2;             /* grouped lists, secondary panels */
+  --container-high: #EAE4E8;        /* pressed / selected rows */
 
-  --primary: oklch(0.49 0.13 35);               /* brick */
-  --primary-foreground: oklch(0.955 0.018 85);
-  --secondary: oklch(0.885 0.026 85);           /* sand */
-  --secondary-foreground: oklch(0.25 0.012 85);
-  --muted: oklch(0.9 0.022 85);
-  --muted-foreground: oklch(0.44 0.016 85);     /* faded ink */
-  --accent: oklch(0.91 0.03 70);                /* paper wash, hover only */
-  --accent-foreground: oklch(0.25 0.012 85);
+  --primary: #752B69;               /* brand plum, white text 9.11:1 */
+  --primary-hover: #661C5A;
+  --primary-foreground: #FFFFFF;
+  --primary-container: #F9E4F3;
+  --primary-on-container: #4C1043;
+  --secondary: #F3EFF2;
+  --secondary-foreground: #221A20;
+  --muted: #F3EFF2;
+  --muted-foreground: #62575F;      /* 6.59:1 on page, 5.50:1 on container-high */
+  --placeholder: #82767F;           /* placeholders and disabled only */
+  --accent: #EAE4E8;
+  --accent-foreground: #221A20;
 
-  --warning: oklch(0.53 0.11 80);               /* mustard, text-safe */
-  --warning-foreground: oklch(0.975 0.012 85);
-  --destructive: oklch(0.42 0.14 30);           /* deep red */
-  --destructive-foreground: oklch(0.975 0.012 85);
+  --block: #A70511;                 /* contains [allergen]: the only dark solid */
+  --block-hover: #8D0005;
+  --block-text: #94020D;
+  --block-container: #FFE6E2;
+  --caution: #FDBE45;               /* may contain: ink text on it 10.2:1 */
+  --caution-text: #874900;
+  --caution-container: #FFF0D0;
+  --safe-container: #DCF8EA;        /* safe for [person]: light by design */
+  --safe-text: #005F3E;
+  --safe-icon: #007E57;
 
-  --border: oklch(0.76 0.025 85);
-  --input: oklch(0.55 0.02 85);
-  --ring: oklch(0.49 0.13 35);
+  --destructive: var(--block);
+  --destructive-foreground: #FFFFFF;
+  --warning: var(--caution-text);
+  --warning-foreground: #FFFFFF;
+
+  --border: #DCD5DA;                /* dividers only, never a control's sole boundary */
+  --input: #887C85;                 /* 3.81:1 on page: control boundaries meet 1.4.11 */
+  --ring: #752B69;
 }
 
 .dark {
-  --background: oklch(0.2 0.01 85);
-  --foreground: oklch(0.93 0.018 85);
-  --card: oklch(0.24 0.012 85);
-  --card-foreground: oklch(0.93 0.018 85);
-  --popover: oklch(0.24 0.012 85);
-  --popover-foreground: oklch(0.93 0.018 85);
-  --primary: oklch(0.7 0.13 40);
-  --primary-foreground: oklch(0.18 0.03 35);
-  --secondary: oklch(0.3 0.012 85);
-  --secondary-foreground: oklch(0.93 0.018 85);
-  --muted: oklch(0.3 0.012 85);
-  --muted-foreground: oklch(0.7 0.016 85);
-  --accent: oklch(0.32 0.02 70);
-  --accent-foreground: oklch(0.93 0.018 85);
-  --warning: oklch(0.8 0.12 85);
-  --warning-foreground: oklch(0.2 0.03 80);
-  --destructive: oklch(0.7 0.16 28);
-  --destructive-foreground: oklch(0.18 0.02 28);
-  --border: oklch(0.36 0.014 85);
-  --input: oklch(0.55 0.016 85);
-  --ring: oklch(0.7 0.13 40);
+  --background: #181517;
+  --foreground: #EAE6E9;
+  --card: #221E21;
+  --card-foreground: #EAE6E9;
+  --popover: #221E21;
+  --popover-foreground: #EAE6E9;
+  --container: #2F2A2D;
+  --container-high: #3A3438;
+  --primary: #E09FD1;
+  --primary-hover: #EDB4E0;
+  --primary-foreground: #221A20;
+  --primary-container: #4C1043;
+  --primary-on-container: #F9E4F3;
+  --secondary: #2F2A2D;
+  --secondary-foreground: #EAE6E9;
+  --muted: #2F2A2D;
+  --muted-foreground: #B5AFB4;
+  --placeholder: #8C858A;
+  --accent: #3A3438;
+  --accent-foreground: #EAE6E9;
+  --block: #EF675C;
+  --block-hover: #F5847A;
+  --block-text: #FF9286;
+  --block-container: #4A1A16;
+  --caution: #FDBE45;
+  --caution-text: #FAC053;
+  --caution-container: #4A3A12;
+  --safe-container: #15382A;
+  --safe-text: #70DDB1;
+  --safe-icon: #5BC99E;
+  --destructive: var(--block);
+  --destructive-foreground: #221A20;
+  --warning: var(--caution-text);
+  --warning-foreground: #221A20;
+  --border: #3A3438;
+  --input: #8C858A;
+  --ring: #E09FD1;
 }
 
 @theme inline {
@@ -75,14 +114,30 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  --color-container: var(--container);
+  --color-container-high: var(--container-high);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-container: var(--primary-container);
+  --color-primary-on-container: var(--primary-on-container);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-placeholder: var(--placeholder);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-block: var(--block);
+  --color-block-hover: var(--block-hover);
+  --color-block-text: var(--block-text);
+  --color-block-container: var(--block-container);
+  --color-caution: var(--caution);
+  --color-caution-text: var(--caution-text);
+  --color-caution-container: var(--caution-container);
+  --color-safe-container: var(--safe-container);
+  --color-safe-text: var(--safe-text);
+  --color-safe-icon: var(--safe-icon);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
@@ -98,13 +153,14 @@
   html, body, #root { height: 100%; }
   body { @apply bg-background text-foreground font-sans antialiased; margin: 0; font-weight: 400; }
   input, button, select { font: inherit; }
+  ::placeholder { color: var(--placeholder); }
   h1, h2, h3 { @apply font-display; font-variation-settings: "wdth" 100, "opsz" 96; }
 }
 
 @layer utilities {
-  /* Uppercase micro-label: the "stamp" voice used for meta, badges and nav. */
+  /* Uppercase micro-label used for meta, badges and nav. */
   .label-micro { @apply text-[10px] font-semibold uppercase tracking-[0.12em]; }
-  /* Rows separated by a dotted leader, the receipt grammar. */
+  /* Rows separated by a dotted leader. */
   .row-dotted { border-bottom: 1px dotted color-mix(in oklch, var(--foreground) 38%, transparent); }
   .rule { border-bottom: 1px solid color-mix(in oklch, var(--foreground) 22%, transparent); }
 }

@@ -37,7 +37,7 @@ export function HouseholdScreen() {
           return (
             <Card key={m.id} tone={rules ? 'amber' : 'default'}>
               <div className="flex items-center gap-3">
-                <div className={`size-10 rounded-full text-white flex items-center justify-center font-extrabold ${rules ? 'bg-warning' : 'bg-foreground'}`}>{m.name[0]}</div>
+                <div className={`size-10 rounded-full flex items-center justify-center font-extrabold ${rules ? 'bg-caution-container text-caution-text border border-caution-text' : 'bg-primary-container text-primary-on-container'}`}>{m.name[0]}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold">{m.name}{m.age !== null && m.age !== undefined ? `, ${m.age}` : ''}{isMe ? ' · you' : ''}</div>
                   <div className="text-xs font-semibold text-muted-foreground">

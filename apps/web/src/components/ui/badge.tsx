@@ -10,11 +10,16 @@ const badgeVariants = cva(
       variant: {
         default: 'border-primary bg-primary text-primary-foreground',
         secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-destructive text-destructive bg-transparent',
-        outline: 'border-foreground/40 text-foreground bg-transparent',
-        success: 'border-primary text-primary bg-transparent',
-        warning: 'border-warning text-warning bg-transparent',
-        muted: 'border-foreground/30 text-muted-foreground bg-transparent',
+        /* block: the only dark solid. Reserved for "contains [allergen]". */
+        destructive: 'border-block bg-block text-white',
+        'block-soft': 'border-block-text bg-block-container text-block-text',
+        outline: 'border-input text-foreground bg-transparent',
+        /* safe: pale container, never a solid, so it can never match the block by lightness. */
+        success: 'border-safe-text bg-safe-container text-safe-text',
+        /* caution: amber with dark text; white on amber is forbidden. */
+        warning: 'border-caution-text bg-caution-container text-caution-text',
+        'caution-solid': 'border-caution-text bg-caution text-foreground',
+        muted: 'border-input text-muted-foreground bg-transparent',
       },
     },
     defaultVariants: { variant: 'default' },

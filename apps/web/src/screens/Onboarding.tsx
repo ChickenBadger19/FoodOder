@@ -96,7 +96,7 @@ export function Onboarding() {
           ) : (
             <Card key={i}>
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-foreground text-background flex items-center justify-center font-extrabold">{o.name[0]?.toUpperCase()}</div>
+                <div className="size-10 rounded-full bg-primary-container text-primary-on-container flex items-center justify-center font-extrabold">{o.name[0]?.toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold">{o.name}{o.age !== null && o.age !== undefined ? `, ${o.age}` : ''}</div>
                   <div className="text-xs font-semibold text-muted-foreground">{summarise(o)}</div>

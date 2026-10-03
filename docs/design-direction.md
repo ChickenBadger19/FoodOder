@@ -64,7 +64,25 @@ receipt-and-label grammar maps naturally onto lists, quantities, prices and the 
 B is the safe second choice if the brand needs to feel more "fintech-trustworthy". C is lovely but
 leans towards content, and this product is a tool.
 
-## What changed in the app (Deli Counter applied)
+## Revision after the colour research (October 2026)
+
+The cream/paper ground of Territory A was replaced following a five-stream evidence review
+(`docs/colour-research.md`). Short version: no study shows cream beats white on a phone; cream
+costs contrast on every mid-tone, flattens the white-card lift, skews the red/amber/green status hues
+and is now a recognised template look. The type and layout grammar of Territory A stay; the colour
+system is now:
+
+- Page #FCF9FB (near-white, brand-tinted below visibility), cards pure white, ink #221A20.
+- One brand colour: deep plum #752B69, chosen by elimination against the UK grocer hue map and
+  because it stays distinguishable from the block red for red-green colour-blind users.
+- Semantic states separated by lightness and shape, not hue: block #A70511 is the only dark solid in
+  the system and red appears nowhere else; caution is amber #FDBE45 with dark text; safe is always
+  a pale container #DCF8EA, never a solid. Every state carries an icon, a border in its text colour,
+  and the word.
+- A dietary block is never a disabled button: it stays fully readable and tapping it says exactly
+  what is blocked and why.
+
+## What changed in the app (Deli Counter, as first applied)
 
 - Type: Bricolage Grotesque for headlines and section titles, Instrument Sans for everything else,
   three weights only (400, 600, 800). Body text is regular weight; bold is reserved for names and

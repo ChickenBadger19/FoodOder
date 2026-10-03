@@ -12,8 +12,8 @@ import { cn } from '@/lib/utils';
 export function Card({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: 'default' | 'amber' | 'red' | 'dashed'; className?: string }) {
   return (
     <ShadCard className={cn(
-      tone === 'amber' && 'border-warning',
-      tone === 'red' && 'border-destructive',
+      tone === 'amber' && 'border-caution-text',
+      tone === 'red' && 'border-block-text',
       tone === 'dashed' && 'border-dashed bg-transparent',
       className,
     )}>
@@ -29,7 +29,7 @@ export function Badge({ children, tone = 'muted' }: { children: ReactNode; tone?
 
 export function Pill({ children, onClick, active = false, type = 'button', disabled = false, tone = 'default' }: { children: ReactNode; onClick?: () => void; active?: boolean; type?: 'button' | 'submit'; disabled?: boolean; tone?: 'default' | 'amber' }) {
   return (
-    <Button type={type} onClick={onClick} disabled={disabled} size="sm" variant={active ? (tone === 'amber' ? 'default' : 'ink') : 'outline'} className={cn(active && tone === 'amber' && 'bg-warning text-warning-foreground hover:bg-warning/90')}>
+    <Button type={type} onClick={onClick} disabled={disabled} size="sm" variant={active ? (tone === 'amber' ? 'default' : 'ink') : 'outline'} className={cn(active && tone === 'amber' && 'bg-caution text-foreground border-caution-text hover:bg-caution/90')}>
       {children}
     </Button>
   );
@@ -54,9 +54,9 @@ export function Section({ title, aside, children }: { title: string; aside?: Rea
 export function Notice({ children, tone = 'muted' }: { children: ReactNode; tone?: 'muted' | 'amber' | 'red' | 'green' }) {
   const cls = {
     muted: 'bg-card border-border text-foreground',
-    amber: 'bg-warning/12 border-transparent text-warning',
-    red: 'bg-destructive/10 border-transparent text-destructive',
-    green: 'bg-primary/10 border-transparent text-primary',
+    amber: 'bg-caution-container border-caution-text text-caution-text',
+    red: 'bg-block-container border-block-text text-block-text',
+    green: 'bg-safe-container border-safe-text text-safe-text',
   }[tone];
   return <div className={cn('text-xs font-medium rounded-md px-3 py-2 border', cls)}>{children}</div>;
 }
