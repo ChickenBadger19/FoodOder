@@ -7,7 +7,7 @@ dev-dist/
 *.sqlite
 *.sqlite-journal
 *.db
-data/
+apps/api/data/
 .tesco/
 .DS_Store
 research_notes/
