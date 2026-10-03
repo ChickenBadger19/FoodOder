@@ -262,21 +262,99 @@ This is where most of the "it bought the wrong thing" pain lives, so it learns:
 - Substitutes: if nothing matches, suggest the nearest ingredient and flag it
   on the approval screen.
 
+### 4.6 Dietary constraints (e.g. someone is gluten-free)
+
+Constraints belong to **people**, not to the app, because they only apply
+when that person is eating. The household has members, each with constraints
+(gluten-free, coeliac-strict, dairy-free, nut allergy, vegetarian, …) and a
+default of "eating" or "not eating" for a given cook. "Lasagne for 6
+including Sam" applies Sam's constraints to that recipe; "curry for 2, just
+us" doesn't.
+
+Where a constraint is enforced, in order:
+
+1. **Recipe resolution.** Every ingredient in the catalogue carries allergen
+   tags (`gluten`, `dairy`, `nuts`, `egg`, …), seeded from a standard allergen
+   list and corrected over time. When a constrained person is eating, the
+   resolver flags each offending ingredient and proposes the swap
+   (pasta → gluten-free pasta, plain flour → GF flour, soy sauce → tamari,
+   stock cubes → GF stock, beer → GF beer or omit). LLM-generated recipes are
+   asked for a GF version up front rather than patched afterwards. You confirm
+   the swaps on the recipe screen.
+2. **Inventory.** Stock items inherit the allergen tags of their ingredient
+   *and* of the specific product (a GF pasta in the cupboard is tagged
+   `gluten-free`, ordinary pasta is `gluten`). The stock check only counts a
+   stock item as covering a GF line if the item itself is GF. So "we have
+   pasta" doesn't silently satisfy a gluten-free lasagne.
+3. **Product matching.** For a line that must be free-from, the matcher
+   applies a **hard filter**: only Tesco products whose product data carries
+   the matching "Free From" / dietary attribute or an explicit gluten-free
+   claim are candidates. Tesco's product cards expose allergen and dietary
+   info; we read it rather than trusting the product name. If nothing
+   qualifies, the line is shown as "no verified GF option found" rather than
+   falling back to a normal product.
+4. **Approval screen.** Each line shows a badge: `GF verified (label)`,
+   `GF by ingredient (naturally free-from, e.g. rice)`, or a red
+   `contains gluten` / `unverified` warning. A draft that still contains a
+   flagged line for a constrained eater cannot be approved until you resolve
+   or explicitly override it.
+5. **Strictness levels.** `coeliac-strict` additionally excludes products with
+   "may contain gluten" warnings and surfaces cross-contamination notes for
+   things like oats and shared fryers. `preference` level just prefers GF.
+
+The same mechanism covers nut allergies, dairy-free, vegetarian/vegan and
+dislikes ("Sam hates coriander" is a soft constraint that triggers a swap
+suggestion, not a block).
+
+### 4.7 Non-recipe items ("we need bleach")
+
+Not everything comes from a recipe. A **running shopping list** sits
+alongside the cook list, and the draft order is built from both.
+
+- "We need bleach", "add bin bags", "we're out of washing-up liquid" → a
+  line on the running list. "Out of" also sets that item's stock to zero.
+- The ingredient catalogue is really an *item* catalogue: it has
+  `household`, `toiletries`, `pet` categories as well as food, so bleach is
+  matched, remembered and preferred exactly like beef mince. Once you've
+  approved a specific bleach once, that's the one it picks next time.
+- Lines on the running list carry an optional quantity and a `by` date; a
+  plain "bleach" means one of your usual.
+- When you ask to propose an order, everything on the running list is pulled
+  into the draft with the recipe shortfall, de-duplicated, and shown on the
+  same approval screen under a separate "Household / extras" section.
+- Staples (loo roll, washing-up liquid, coffee…) can be marked `track` so the
+  app suggests them when they're likely to be low based on the last purchase
+  date and typical interval, instead of you having to remember.
+- Voice/typing in the PWA and the chat endpoint both accept this; it is the
+  simplest intent to recognise and ships in Phase 1.
+
 ---
 
 ## 5. Data model (Drizzle / SQLite)
 
 ```
-ingredients            canonical names + aliases + default unit + category + is_staple
+items                  canonical names + aliases + default unit + category (food | household |
+                       toiletries | pet) + is_staple + allergen_tags[] (gluten, dairy, nuts, …)
+                       ("ingredients" in the text above = items with category food)
+household_members      name, eating_by_default
+member_constraints     member_id, kind (gluten_free | dairy_free | nut_allergy | vegetarian | …),
+                       strictness (preference | avoid | strict), notes
+item_substitutions     item_id, constraint kind → substitute item_id (pasta → GF pasta)
+shopping_list_items    item_id, qty?, unit?, by_date?, added_via (chat | manual | low_stock), status
 recipes                name, servings, source, steps, created_from
 recipe_ingredients     recipe_id, ingredient_id, qty, unit, prep, scaling, optional, raw
 inventory_items        ingredient_id, qty, unit, confidence, location, bought_at, expires_at,
                        tesco_product_id?, barcode?
-tesco_products         cached product cards: id, name, price, pack qty/unit, image, last_seen
-ingredient_product_prefs ingredient_id → tesco_product_id, always_ask
+retailers              tesco | sainsburys | ocado | …, auth kind, session status/expiry
+retailer_products      cached product cards keyed (retailer, retailer_product_id): name, price,
+                       pack qty/unit, image, last_seen, dietary_attrs[] (free-from flags),
+                       allergens[], may_contain[]
+item_product_prefs     item_id + retailer → retailer_product_id, always_ask
 plans                  "cook list" for a date range: recipe_id, target_servings, status
-orders                 proposed basket: status (draft → approved → pushed → ordered → delivered),
-                       lines (ingredient, needed qty, product, qty, price), approved_at
+plan_eaters            plan_id, member_id  (which constraints apply to this cook)
+orders                 proposed basket for one retailer: retailer, status (draft → approved →
+                       pushed → ordered → delivered), lines (item, needed qty, product, qty,
+                       price), delivery fee, approved_at
 inventory_events       append-only ledger: +/- qty, reason (order, cooked, scan, manual, expired)
 settings               household size default, staples list, Tesco session metadata (not cookies)
 ```
@@ -291,7 +369,9 @@ dump and never in git.
 ```
 POST /recipes/resolve        { query | url | servings } → candidate recipe(s) for confirmation
 POST /recipes                save confirmed recipe
-POST /plans                  add recipe + servings to the current cook list
+POST /plans                  add recipe + servings (+ who's eating) to the current cook list
+GET/POST /list               running shopping list; POST { text: "bleach" } adds a line
+GET/POST /household          members and their dietary constraints
 POST /plans/:id/propose      run scale → aggregate → stock check → match → draft order
 GET  /orders/:id             draft basket for the approval screen
 PATCH /orders/:id/lines/:n   swap product / change qty / mark "have it"
@@ -299,9 +379,10 @@ POST /orders/:id/approve     push lines to Tesco basket; returns Tesco basket li
 POST /orders/:id/delivered   move lines into inventory
 GET/POST /inventory          list / quick add; POST /inventory/scan { barcode }
 POST /inventory/cooked       { recipe_id, servings } → deduct
-POST /tesco/session          import cookies (from the one-tap helper)
-GET  /tesco/status           connected? expires when?
-POST /tesco/sync-orders      import order history into inventory
+POST /retailers/:id/session  connect (cookie import or email+password, per retailer)
+GET  /retailers              which are connected, session expiry
+POST /retailers/:id/sync-orders  import order history into inventory
+POST /plans/:id/compare      price the same shortfall at every connected retailer
 POST /chat                   natural-language entry point that calls the above
 ```
 
@@ -323,6 +404,9 @@ phone, SQLite + Drizzle migrations, CI running tests + typecheck.
 - Recipe import from URL and by name (LLM), confirm screen, save.
 - Scaler + aggregator + stock check in `core` with tests.
 - Inventory list, quick add, cooked-deduction.
+- Running shopping list ("we need bleach") merged into the shortfall.
+- Household members + constraints; allergen tags on the catalogue; GF swap
+  suggestions at recipe confirmation; stock check respects tags.
 - Output: a shortfall list you can copy and paste into Tesco's multi-search.
   *You can already use the app for every shop at this point.*
 
@@ -334,8 +418,9 @@ phone, SQLite + Drizzle migrations, CI running tests + typecheck.
   inventory becomes real without a week of manual entry.
 
 **Phase 3 — Basket push with approval**
-- Product matcher + preferences table.
-- Approval screen (swap, qty, "have it", totals).
+- Product matcher + preferences table; hard free-from filter using Tesco
+  product dietary/allergen data; GF badges and blocking warnings.
+- Approval screen (swap, qty, "have it", totals, "Household / extras" section).
 - Approve → add to Tesco basket → deep link to Tesco checkout.
 - Order detection via order history → "incoming" → "delivered" → inventory.
 
@@ -348,6 +433,13 @@ phone, SQLite + Drizzle migrations, CI running tests + typecheck.
 - Barcode scanning via camera + Open Food Facts.
 - Expiry nudges, "check this" badges, staples auto-reorder suggestion.
 - Push notifications (PWA) when the Tesco session is about to expire.
+
+**Phase 6 — Second retailer + price comparison** (see §10)
+- Sainsbury's adapter (exists in open-supermarkets, email + password auth).
+- "Price this shop everywhere" → one draft per retailer, totals incl. delivery
+  fee and minimum order, you pick which to approve.
+- Per-retailer product preferences; free-from filter re-validated against
+  each retailer's product data.
 
 Phases 1–3 are the MVP. Estimate for a focused build: Phase 0–1 one to two
 weeks of evenings, Phase 2–3 similar, with Tesco breakage the main unknown.
@@ -366,6 +458,7 @@ weeks of evenings, Phase 2–3 similar, with Tesco breakage the main unknown.
 | Ingredient parsing errors (e.g. "1 can chopped tomatoes (400g)") | Medium | Rule parser + LLM fallback + confirmation screen; every parse failure logged to improve the parser |
 | LLM invents a non-existent product or hallucinated quantities | Low with structured outputs | LLM only chooses among real candidates; recipe generation always confirmed by you |
 | Account safety (automation on your Tesco account) | Low volume, personal use | Keep request volume tiny, never automate payment, never store password |
+| A gluten-containing product slips through for a GF eater | Medium without care | Hard filter on Tesco's own free-from/allergen data, never on product name; unverified lines block approval; coeliac-strict also excludes "may contain"; final check is you on the approval screen |
 
 ---
 
@@ -383,15 +476,107 @@ weeks of evenings, Phase 2–3 similar, with Tesco breakage the main unknown.
 3. **Recipe-by-name default:** LLM-generated recipe vs web search for a
    recipe URL then import. Recommendation: LLM for speed, with "use this URL
    instead" always available.
-4. **Household defaults:** default portions, dietary constraints, brands you
-   always/never want (own-brand ok? organic?). These seed the matcher.
+4. **Household defaults:** who lives there and who has what constraint (and
+   how strict: coeliac-strict vs avoid vs preference), default portions,
+   brands you always/never want (own-brand ok? organic?). These seed the
+   matcher.
 5. **Staples list:** which ingredients are assumed always present (salt,
    pepper, oil, flour, stock cubes…)? Can start with a sensible default and
    edit.
 
 ---
 
-## 10. Immediate next steps
+## 10. Going universal: all the main retailers
+
+The architecture already assumes this: everything retailer-specific sits
+behind one `Retailer` interface (`search`, `product`, `basketAdd`,
+`basketView`, `orders`, `connect`). Inventory, recipes, scaling, dietary
+rules and the approval screen never know which shop they are talking to.
+Adding a retailer is one adapter plus its login quirks.
+
+### What it would take per UK retailer (state of play, Oct 2026)
+
+| Retailer | Online delivery | Existing open adapter | Auth | Notes |
+|---|---|---|---|---|
+| Tesco | Yes | Yes (search, basket, slots, checkout) | Browser cookie import, ~weekly | Akamai bot protection; this is our first target |
+| Sainsbury's | Yes | Yes (search, basket, slots, checkout) | Email + password | Nicest auth of the lot, so the obvious second retailer |
+| Ocado | Yes | Search + basket; slots read-only | Email + password | Checkout blocked by AWS WAF, so "build basket, finish in app" only |
+| Asda | Yes | No | Unknown, would need building | Large user base, worth doing third |
+| Morrisons | Yes (own + Amazon) | No | Unknown | Build if needed |
+| Waitrose | Yes | No | Unknown | Build if needed |
+| Iceland | Yes | No | Unknown | Niche |
+| Aldi / Lidl | No general delivery (Deliveroo only / none) | n/a | n/a | Out of scope; could still do "price check" via their public product pages |
+
+None of them have an official consumer ordering API. Every adapter is
+unofficial and fails independently, which is the whole cost of "universal".
+
+### What you gain
+
+- **Price comparison per shop.** Same shortfall priced at every connected
+  retailer, including delivery fee, minimum order, and loyalty price
+  (Clubcard / Nectar) so the comparison is honest. Pick the cheapest, or
+  split (fresh from one, cupboard from another) if the delivery fees make
+  sense.
+- **Resilience.** When Tesco's integration breaks, you shop at Sainsbury's
+  that week instead of falling back to pasting lists.
+- **Retailer-neutral inventory and recipes.** Your data outlives any one
+  supermarket relationship. This is the real moat; the retailer adapters are
+  plumbing.
+- **Better substitutions.** "No GF lasagne sheets at Tesco, Sainsbury's has
+  them" becomes a one-line suggestion.
+
+### What it costs
+
+- **N fragile integrations instead of 1.** Each has its own bot protection,
+  session lifetime and product data shape. Budget ongoing maintenance, not a
+  one-off build.
+- **N accounts to keep connected.** Cookie re-import weekly for Tesco,
+  password-based for others. The "connected retailers" screen becomes a
+  real part of the product.
+- **Product matching per retailer.** Pack sizes, naming and especially
+  free-from/allergen attributes differ. The gluten hard filter has to be
+  validated against each retailer's product data separately before it is
+  trusted for a coeliac eater.
+- **Comparison fairness.** Promotions, multi-buys, loyalty prices, delivery
+  passes and minimum orders all need modelling or the "cheapest" answer is
+  wrong.
+
+### The fork that actually matters: personal tool vs product for others
+
+Everything above is fine for **your household**. If "universal shopper"
+means **other people use it**, the retailer layer changes character:
+
+- You would be holding other people's supermarket sessions and, for
+  password-auth retailers, their passwords. That is a security liability
+  and, under each retailer's terms, their account is at risk, not yours.
+- Retailers tolerate low-volume personal automation; they actively block it
+  at scale (Ocado's WAF is the example already in the open-source project).
+  There is no official API to migrate to when that happens.
+- Mealia, Basket List and the retailers' own assistants already occupy the
+  "recipe → basket" product space with retailer partnerships or in-app
+  placement that an unofficial integration can't match.
+
+If the product ambition is real, the defensible product is the **brain**:
+inventory, recipes, scaling, dietary safety, approval, and the comparison
+engine. Then ship to retailers through whatever each one sanctions (list
+import pages, shoppable-recipe partner programs, any future official API),
+and keep direct basket push as a self-hosted power-user feature where the
+user's own session stays on the user's own box. That is also exactly what
+Phases 1 and 5 build, so the personal-tool path and the product path share
+their first several months of work.
+
+### Recommended order
+
+1. Tesco first, as planned (Phases 2–3).
+2. Sainsbury's second (Phase 6): adapter exists, password auth, immediate
+   price comparison and resilience for almost no extra core work.
+3. Ocado as read-only comparison + basket build.
+4. Asda / Morrisons / Waitrose only when you actually shop there; each is a
+   new adapter from scratch.
+
+---
+
+## 11. Immediate next steps
 
 1. Agree the open decisions above (or accept the recommendations).
 2. Phase 0 scaffold on this branch.
