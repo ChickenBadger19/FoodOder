@@ -183,7 +183,7 @@ export function BasketScreen() {
             </Button>
           </div>
         )}
-        {!locked && d.blockers > 0 && <button onClick={() => approve(true)} className="text-xs font-bold text-destructive">Approve anyway (override dietary block)</button>}
+        {!locked && d.blockers > 0 && <button onClick={() => approve(true)} className="text-xs font-semibold text-muted-foreground underline underline-offset-2">Approve anyway and take responsibility for the blocked lines</button>}
       </div>
     </div>
   );
