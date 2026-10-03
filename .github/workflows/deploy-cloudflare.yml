@@ -49,12 +49,15 @@ jobs:
       - name: Smoke test the deployed Worker
         run: |
           URL=https://foodify.jeff-cousens.workers.dev
-          # A fresh upload can take a few seconds to reach every edge; wait for the new version to answer.
-          for i in $(seq 1 20); do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/health")
-            [ "$code" = 200 ] && break
-            echo "waiting for rollout ($code)"; sleep 3
+          # A fresh upload can take a few seconds to reach every edge: wait until the health check reports the
+          # seed version this build carries, which also runs the database top-up for existing deployments.
+          want=$(grep -o 'SEED_VERSION = [0-9]*' packages/app/src/seed.ts | grep -o '[0-9]*$')
+          for i in $(seq 1 30); do
+            body=$(curl -sS "$URL/api/health" || true)
+            echo "$body" | grep -q "\"seedVersion\":$want" && break
+            echo "waiting for rollout: $body"; sleep 3
           done
+          echo "$body" | grep -q "\"seedVersion\":$want" || { echo "new version not live after 90s"; exit 1; }
           echo "GET $URL/api/health"; curl -sS -w '\nHTTP %{http_code}\n' "$URL/api/health"
           echo "GET $URL/ (expect 401: the app is behind HTTP Basic auth)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/"
           echo "GET $URL/api/state (expect 401)"; curl -sS -o /dev/null -w '%{http_code}\n' "$URL/api/state"
