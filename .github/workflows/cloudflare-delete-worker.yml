@@ -1,0 +1,34 @@
+# Manual maintenance: delete a Worker from the Cloudflare account (e.g. an old name after a rename).
+# Run it from the Actions tab, or let Claude trigger it. Refuses to delete the live app.
+name: Delete a Cloudflare Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_name:
+        description: Name of the Worker to delete
+        required: true
+        type: string
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Delete the Worker
+        if: inputs.worker_name != 'foodify'
+        working-directory: apps/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: pnpm exec wrangler delete --name "${{ inputs.worker_name }}" --force
+      - name: Refused
+        if: inputs.worker_name == 'foodify'
+        run: echo "Refusing to delete the live app Worker 'foodify'." && exit 1
