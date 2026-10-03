@@ -33,6 +33,8 @@ export interface MatchContext {
   ownBrandOk: boolean;
   /** Product ids bought before (from order history). */
   boughtBefore: Set<string>;
+  /** Extra words from what the user said ("medium") that should steer between otherwise equal products. */
+  preferWords?: string[];
 }
 
 export interface RankedProduct {
@@ -102,6 +104,11 @@ export function rankProducts(candidates: Product[], item: Item, needQty: number,
     score -= lineTotal;
 
     if (product.ownBrand && !ctx.ownBrandOk) score -= 15;
+
+    if (ctx.preferWords?.length) {
+      const pn = normaliseName(product.name);
+      for (const w of ctx.preferWords) if (pn.includes(w)) { score += 15; reasons.push(`"${w}" as you said`); }
+    }
 
     if (dietary.kind === 'verified') { score += 10; reasons.push(`${dietary.allergen}-free (label)`); }
     if (dietary.kind === 'naturally_free') reasons.push(`naturally ${dietary.allergen}-free`);

@@ -70,11 +70,12 @@ export interface Shortfall {
  * A stock item only covers a need if it does not violate an active constraint (e.g. ordinary pasta
  * does not cover a gluten-free pasta need when a strict gluten-free eater is present).
  */
-export function computeShortfall(needs: Need[], stock: StockItem[], items: Item[], active: ActiveConstraints, opts: { tolerance?: number } = {}): Shortfall[] {
+export function computeShortfall(needs: Need[], stock: StockItem[], items: Item[], activeOrFn: ActiveConstraints | ((need: Need) => ActiveConstraints), opts: { tolerance?: number } = {}): Shortfall[] {
   /** A shortfall smaller than this fraction of the need is treated as in stock (recipes aren't that precise). */
   const tolerance = opts.tolerance ?? 0.05;
   const byId = new Map(items.map(i => [i.id, i]));
   return needs.map(need => {
+    const active = typeof activeOrFn === 'function' ? activeOrFn(need) : activeOrFn;
     const item = byId.get(need.itemId) ?? null;
     if (!item) {
       return { need, item: null, haveQty: 0, buyQty: need.qty, unit: need.unit, status: 'unknown_item', covering: [], ignored: [], anyApprox: false };

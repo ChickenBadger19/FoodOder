@@ -9,9 +9,10 @@ import {
   type Member, type Recipe, type StockItem,
 } from '@foododer/core';
 import { MockRetailer, type Retailer } from '@foododer/retailers';
-import { Store, newId, type Plan } from './db/index.js';
+import { Store, newId, type Plan, type ListItem } from './db/index.js';
 import { seed } from './seed.js';
-import { applyLineChange, proposeOrder, type DraftOrder } from './services/propose.js';
+import { applyLineChange, appendListLine, promoteAdhocItems, proposeOrder, type DraftOrder } from './services/propose.js';
+import { dateForDay, weekRange } from './services/dates.js';
 import { generateRecipe, llmAvailable } from './llm.js';
 
 const DB_FILE = process.env.FOODODER_DB ?? 'data/foododer.sqlite';
@@ -62,6 +63,7 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
       list: store.listItems().filter(l => l.status === 'open'),
       retailers: [{ id: r.id, name: r.displayName, modes: r.modes, session: await r.session() }],
       household: store.setting('household', { defaultServings: 4, ownBrandOk: true, alwaysAskCategories: ['meat'] }),
+      meMemberId: store.setting<string | null>('meMemberId', null) ?? store.members()[0]?.id ?? null,
       llm: llmAvailable(),
     };
   });
@@ -78,12 +80,14 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
       if (intent.kind === 'list') {
         const item = resolveItem(intent.item, items);
         const { item: li, merged } = addToList(intent.item, item?.id ?? null, intent.qty, 'chat');
-        results.push({ kind: 'list', added: li, merged });
+        const draftIds = await addLineToOpenDrafts(li);
+        results.push({ kind: 'list', added: li, merged, addedToDrafts: draftIds });
       } else if (intent.kind === 'out_of') {
         const item = resolveItem(intent.item, items);
         if (item) for (const s of store.stock().filter(s => s.itemId === item.id)) store.deleteStock(s.id);
         const { item: li } = addToList(intent.item, item?.id ?? null, null, 'out_of');
-        results.push({ kind: 'out_of', item: item?.name ?? intent.item, added: li });
+        const draftIds = await addLineToOpenDrafts(li);
+        results.push({ kind: 'out_of', item: item?.name ?? intent.item, added: li, addedToDrafts: draftIds });
       } else if (intent.kind === 'stock_add') {
         const item = resolveItem(intent.item, items);
         if (!item) { results.push({ kind: 'stock_add', error: `Don't know "${intent.item}" yet` }); continue; }
@@ -91,12 +95,38 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
         store.upsertStock(s);
         results.push({ kind: 'stock_add', stock: s });
       } else {
-        const resolved = await resolveRecipe(intent.query, intent.servings ?? household.defaultServings, members.filter(m => m.eatsByDefault));
-        results.push({ kind: 'recipe', query: intent.query, servings: intent.servings ?? household.defaultServings, day: intent.day, ...resolved });
+        const eaterIds = resolveEaters(intent.only, intent.except, members);
+        const eaters = members.filter(m => eaterIds.includes(m.id));
+        const servings = intent.servings ?? (intent.only.length || intent.except.length ? Math.max(1, eaters.length) : household.defaultServings);
+        const resolved = await resolveRecipe(intent.query, servings, eaters);
+        results.push({ kind: 'recipe', query: intent.query, servings, day: intent.day, date: dateForDay(intent.day), slot: intent.slot ?? 'dinner', eaterIds, eaters: eaters.map(m => m.name), ...resolved });
       }
     }
     return reply.send({ intents, results });
   });
+
+  /** "just me and alex" / "without sam" -> member ids. "me" is the household's own member (setting `meMemberId`, else the first). */
+  function resolveEaters(only: string[], except: string[], members: Member[]): string[] {
+    const meId = store.setting<string | null>('meMemberId', null) ?? members[0]?.id ?? null;
+    const find = (n: string) => n === 'me' || n === 'myself' || n === 'i' ? meId : members.find(m => m.name.toLowerCase() === n || m.id === n)?.id ?? null;
+    let ids = only.length ? only.map(find).filter((x): x is string => !!x) : members.filter(m => m.eatsByDefault).map(m => m.id);
+    if (only.length && ids.length === 0) ids = members.filter(m => m.eatsByDefault).map(m => m.id);
+    const ex = new Set(except.map(find).filter(Boolean));
+    return ids.filter(id => !ex.has(id));
+  }
+
+  /** A list item said in chat should appear on any basket that is still a draft, without a rebuild. */
+  async function addLineToOpenDrafts(li: ListItem): Promise<string[]> {
+    const ids: string[] = [];
+    for (const rec of store.orders().filter(o => o.status === 'draft')) {
+      const draft = drafts.get(rec.id) ?? (rec.payload as DraftOrder);
+      await appendListLine(store, currentRetailer(), draft, li);
+      drafts.set(rec.id, draft);
+      store.upsertOrder({ ...rec, payload: draft });
+      ids.push(rec.id);
+    }
+    return ids;
+  }
 
   async function resolveRecipe(query: string, servings: number, eaters: Member[]): Promise<{ recipe: Recipe | null; candidates: { id: string; name: string }[]; via: 'saved' | 'llm' | 'none' }> {
     const q = query.toLowerCase();
@@ -156,14 +186,39 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
   });
 
   // ---------- plans (cook list)
-  app.get('/api/plans', async () => store.plans().filter(p => p.status === 'planned'));
+  app.get('/api/plans', async (req) => {
+    const q = z.object({ from: z.string().optional(), to: z.string().optional(), all: z.string().optional() }).parse(req.query ?? {});
+    const plans = store.plans().filter(p => q.all ? true : p.status === 'planned');
+    if (!q.from && !q.to) return plans;
+    return plans.filter(p => p.date && (!q.from || p.date >= q.from) && (!q.to || p.date <= q.to));
+  });
+  app.get('/api/plans/week', async (req) => {
+    const q = z.object({ weeks: z.coerce.number().int().min(1).max(4).default(2) }).parse(req.query ?? {});
+    const { start, end } = weekRange(new Date(), q.weeks);
+    const plans = store.plans().filter(p => p.status !== 'cancelled' && p.date && p.date >= start && p.date <= end);
+    const unscheduled = store.plans().filter(p => p.status === 'planned' && !p.date);
+    return { start, end, plans, unscheduled };
+  });
   app.post('/api/plans', async (req, reply) => {
-    const body = z.object({ recipeId: z.string(), servings: z.number().int().positive(), day: z.string().nullable().default(null), eaterIds: z.array(z.string()).optional() }).parse(req.body);
+    const body = z.object({
+      recipeId: z.string(), servings: z.number().int().positive(),
+      day: z.string().nullable().default(null), date: z.string().nullable().optional(),
+      slot: z.enum(['breakfast', 'lunch', 'dinner']).default('dinner'), eaterIds: z.array(z.string()).optional(),
+    }).parse(req.body);
     if (!store.recipe(body.recipeId)) return reply.code(404).send({ error: 'recipe not found' });
     const eaterIds = body.eaterIds ?? store.members().filter(m => m.eatsByDefault).map(m => m.id);
-    const plan: Plan = { id: newId('pl_'), recipeId: body.recipeId, servings: body.servings, day: body.day, eaterIds, status: 'planned', createdAt: new Date().toISOString() };
+    const date = body.date === undefined ? dateForDay(body.day) : body.date;
+    const plan: Plan = { id: newId('pl_'), recipeId: body.recipeId, servings: body.servings, day: body.day, date, slot: body.slot, eaterIds, status: 'planned', createdAt: new Date().toISOString() };
     store.upsertPlan(plan);
     return plan;
+  });
+  app.patch('/api/plans/:id', async (req, reply) => {
+    const plan = store.plan((req.params as any).id);
+    if (!plan) return reply.code(404).send({ error: 'not found' });
+    const body = z.object({ servings: z.number().int().positive().optional(), date: z.string().nullable().optional(), slot: z.enum(['breakfast', 'lunch', 'dinner']).optional(), eaterIds: z.array(z.string()).optional() }).parse(req.body);
+    const next: Plan = { ...plan, ...body };
+    store.upsertPlan(next);
+    return next;
   });
   app.delete('/api/plans/:id', async (req) => { store.deletePlan((req.params as any).id); return { ok: true }; });
   app.post('/api/plans/:id/cooked', async (req, reply) => {
@@ -218,6 +273,8 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
     const r = currentRetailer();
     const pushable = live.filter(l => l.chosen);
     const result = await r.basketAdd(pushable.map(l => ({ productId: l.chosen!.product.id, qty: l.qty })));
+    // Items we had never seen ("medium freezer bags") join the catalogue now that a product was approved for them.
+    promoteAdhocItems(store, draft);
     // Learn preferences from what was approved.
     for (const l of pushable) if (l.itemId) store.upsertPref({ itemId: l.itemId, retailer: r.id, productId: l.chosen!.product.id, alwaysAsk: false });
     for (const l of draft.lines.filter(l => l.section === 'extras' && !l.removed)) {
@@ -316,8 +373,10 @@ export function buildApp(opts: { dbFile?: string; retailer?: Retailer } = {}) {
   });
   app.delete('/api/household/members/:id', async (req) => { store.deleteMember((req.params as any).id); return { ok: true }; });
   app.put('/api/household/settings', async (req) => {
-    const body = z.object({ defaultServings: z.number().int().positive(), ownBrandOk: z.boolean(), alwaysAskCategories: z.array(z.string()) }).parse(req.body);
-    store.setSetting('household', body);
+    const body = z.object({ defaultServings: z.number().int().positive(), ownBrandOk: z.boolean(), alwaysAskCategories: z.array(z.string()), meMemberId: z.string().nullable().optional() }).parse(req.body);
+    const { meMemberId, ...rest } = body;
+    store.setSetting('household', rest);
+    if (meMemberId !== undefined) store.setSetting('meMemberId', meMemberId);
     return body;
   });
 

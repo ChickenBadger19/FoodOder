@@ -60,6 +60,12 @@ const CATALOGUE: P[] = [
   { id: 'h3', name: 'Bin Liners 50L 20 Pack', price: 2.00, packQty: 20, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
   { id: 'h4', name: 'Toilet Tissue 9 Rolls', price: 4.50, packQty: 9, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
   { id: 'h5', name: 'Washing Up Liquid 500ml', price: 1.25, packQty: 500, packUnit: 'ml', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h6', name: 'Freezer Bags Small 60 Pack', price: 1.00, packQty: 60, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h7', name: 'Freezer Bags Medium 40 Pack', price: 1.20, packQty: 40, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h8', name: 'Freezer Bags Large 25 Pack', price: 1.40, packQty: 25, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h9', name: 'Kitchen Roll 2 Pack', price: 1.75, packQty: 2, packUnit: 'count', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h10', name: 'Dishwasher Salt 2kg', price: 1.10, packQty: 2000, packUnit: 'g', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
+  { id: 'h11', name: 'All Purpose Cleaner Spray 750ml', price: 1.30, packQty: 750, packUnit: 'ml', dietary: [], allergens: [], mayContain: [], inStock: true, ownBrand: true },
 ];
 
 export class MockRetailer implements Retailer {

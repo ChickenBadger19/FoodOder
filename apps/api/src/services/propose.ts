@@ -1,10 +1,11 @@
 import {
-  activeConstraints, aggregateNeeds, applySubstitutions, computeShortfall, formatQty, rankProducts, scaleRecipe, resolveItem,
-  type Item, type Member, type Product, type RankedProduct, type Shortfall, type Unit,
+  activeConstraints, aggregateNeeds, applySubstitutions, computeShortfall, formatQty, mergeActive, rankProducts, scaleRecipe, resolveItem,
+  type ActiveConstraints, type IngredientLine,
+  type Item, type MatchContext, type Member, type Product, type RankedProduct, type Shortfall, type Unit,
 } from '@foododer/core';
 import type { Retailer } from '@foododer/retailers';
 import { renderHandoffList } from '@foododer/retailers';
-import type { Store, Plan } from '../db/index.js';
+import type { Store, Plan, ListItem } from '../db/index.js';
 
 export interface OrderLine {
   key: string;
@@ -67,16 +68,21 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
   const eaters: Member[] = members.filter(m => eaterIds.has(m.id));
   const active = activeConstraints(eaters);
 
+  // Constraints follow the meal, not the whole shop: Sam's gluten rule applies to the meals Sam eats.
+  const lineActive = new Map<IngredientLine, ActiveConstraints>();
   const scaled = plans.map(plan => {
     const recipe = store.recipe(plan.recipeId)!;
     const planEaters = members.filter(m => plan.eaterIds.includes(m.id));
     const planActive = activeConstraints(planEaters);
     const s = scaleRecipe(recipe, plan.servings);
-    return { ...s, lines: applySubstitutions(s.lines, items, subs, planActive) };
+    const lines = applySubstitutions(s.lines, items, subs, planActive);
+    for (const l of lines) lineActive.set(l, planActive);
+    return { ...s, lines };
   });
 
   const needs = aggregateNeeds(scaled, items);
-  const shortfalls = computeShortfall(needs, store.stock(), items, active);
+  const activeFor = (need: { from: { line: IngredientLine }[] }) => mergeActive(need.from.map(f => lineActive.get(f.line)).filter((a): a is ActiveConstraints => !!a));
+  const shortfalls = computeShortfall(needs, store.stock(), items, activeFor);
 
   const boughtBefore = new Set<string>();
   for (const o of await retailer.orders()) for (const l of o.lines) boughtBefore.add(l.product.id);
@@ -87,12 +93,13 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
     if (sf.status === 'in_stock' || sf.status === 'staple') continue;
     const item = sf.item;
     const name = item?.name ?? sf.need.itemName;
+    const needActive = activeFor(sf.need);
     const candidates = await searchCandidates(retailer, name, item);
-    const ranked = item ? rankProducts(candidates, item, sf.buyQty, sf.unit, ctx) : [];
+    const ranked = item ? rankProducts(candidates, item, sf.buyQty, sf.unit, { ...ctx, active: needActive }) : [];
     const chosen = ranked.find(r => !r.blocked && !r.weak) ?? null;
     const anyBlocked = ranked.some(r => r.blocked);
     const blocked = !chosen && anyBlocked;
-    const blockReason = blocked ? `No verified ${[...active.allergens.keys()].join('/')}-free option found at ${retailer.displayName}.` : null;
+    const blockReason = blocked ? `No verified ${[...needActive.allergens.keys()].join('/')}-free option found at ${retailer.displayName}.` : null;
     const weakOnly = !chosen && !anyBlocked && ranked.length > 0;
     lines.push({
       key: item?.id ?? `name:${name}`,
@@ -122,32 +129,7 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
 
   // Running list -> extras
   for (const li of store.listItems().filter(l => l.status === 'open')) {
-    const item = li.itemId ? store.item(li.itemId) ?? null : resolveItem(li.text, items);
-    const name = item?.name ?? li.text;
-    const candidates = await searchCandidates(retailer, name, item);
-    const ranked = item ? rankProducts(candidates, item, li.qty ?? 1, item.defaultUnit === 'count' ? 'count' : item.defaultUnit, { ...ctx, active: activeConstraints([]) }) : [];
-    const chosen = ranked.find(r => !r.weak) ?? null;
-    lines.push({
-      key: `list:${li.id}`,
-      section: 'extras',
-      itemId: item?.id ?? null,
-      itemName: name,
-      needQty: li.qty ?? 1,
-      needUnit: 'count',
-      needLabel: li.addedVia === 'out_of' ? 'you said you were out' : `"${li.text}"`,
-      haveLabel: null,
-      anyApprox: false,
-      forRecipes: [],
-      chosen,
-      alternatives: ranked.slice(1, 5),
-      qty: li.qty ?? 1,
-      lineTotal: chosen ? Math.round(chosen.product.price * (li.qty ?? 1) * 100) / 100 : 0,
-      haveIt: false,
-      removed: false,
-      blocked: false,
-      blockReason: null,
-      note: chosen ? null : 'No product found; will go on the paste list by name.',
-    });
+    lines.push(await buildExtrasLine(store, retailer, li, ctx));
   }
 
   const draft: DraftOrder = {
@@ -167,6 +149,75 @@ export async function proposeOrder(store: Store, retailer: Retailer, planIds?: s
   };
   sumTotals(draft);
   return draft;
+}
+
+/** Item used for ranking when the running-list text matches nothing in the catalogue yet. */
+function adhocItem(text: string): Item {
+  return { id: `adhoc:${text.trim().toLowerCase()}`, name: text.trim().toLowerCase(), aliases: [], category: 'household', defaultUnit: 'count', allergens: [], isStaple: false };
+}
+
+/** Words in what was said that aren't in the matched item's name ("medium" in "medium freezer bags") steer the product choice. */
+function hintWords(text: string, item: Item | null): string[] {
+  const itemWords = new Set((item ? [item.name, ...item.aliases] : []).flatMap(n => n.toLowerCase().split(/\s+/)));
+  return text.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !itemWords.has(w) && !['some', 'the', 'more', 'pack', 'packs'].includes(w));
+}
+
+export async function buildExtrasLine(store: Store, retailer: Retailer, li: ListItem, ctx: MatchContext): Promise<OrderLine> {
+  const items = store.items();
+  const known = li.itemId ? store.item(li.itemId) ?? null : resolveItem(li.text, items);
+  const item = known ?? adhocItem(li.text);
+  const candidates = await searchCandidates(retailer, known ? known.name : li.text, known);
+  if (known) for (const p of await retailer.search(li.text, 8)) if (!candidates.some(c => c.id === p.id)) candidates.push(p);
+  const ranked = rankProducts(candidates, item, li.qty ?? 1, item.defaultUnit === 'count' ? 'count' : item.defaultUnit, { ...ctx, active: activeConstraints([]), preferWords: hintWords(li.text, known) });
+  const chosen = ranked.find(r => !r.weak) ?? null;
+  const qty = li.qty ?? 1;
+  return {
+    key: `list:${li.id}`,
+    section: 'extras',
+    itemId: item.id,
+    itemName: known ? known.name : li.text,
+    needQty: qty,
+    needUnit: 'count',
+    needLabel: li.addedVia === 'out_of' ? 'you said you were out' : `"${li.text}"`,
+    haveLabel: null,
+    anyApprox: false,
+    forRecipes: [],
+    chosen,
+    alternatives: ranked.filter(r => r !== chosen).slice(0, 5),
+    qty,
+    lineTotal: chosen ? Math.round(chosen.product.price * qty * 100) / 100 : 0,
+    haveIt: false,
+    removed: false,
+    blocked: false,
+    blockReason: null,
+    note: chosen ? (known ? null : 'New item: it will be remembered once you approve.') : 'No product found; will go on the paste list by name.',
+  };
+}
+
+/** Add a running-list item to an existing draft (chat while the basket is open). */
+export async function appendListLine(store: Store, retailer: Retailer, draft: DraftOrder, li: ListItem): Promise<DraftOrder> {
+  const prefs = store.prefs();
+  const household = store.setting('household', { ownBrandOk: true });
+  const boughtBefore = new Set<string>();
+  for (const o of await retailer.orders()) for (const l of o.lines) boughtBefore.add(l.product.id);
+  const line = await buildExtrasLine(store, retailer, li, { active: activeConstraints([]), prefs, ownBrandOk: household.ownBrandOk, boughtBefore });
+  const idx = draft.lines.findIndex(l => l.key === line.key);
+  if (idx >= 0) draft.lines[idx] = line; else draft.lines.push(line);
+  sumTotals(draft);
+  return draft;
+}
+
+/** After approval, items that were ad hoc become real catalogue entries so next time they match instantly. */
+export function promoteAdhocItems(store: Store, draft: DraftOrder): void {
+  for (const l of draft.lines) {
+    if (!l.itemId?.startsWith('adhoc:') || !l.chosen || l.removed) continue;
+    const name = l.itemId.slice('adhoc:'.length);
+    const id = name.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!store.item(id)) {
+      store.upsertItem({ id, name, aliases: [], category: 'household', defaultUnit: 'count', allergens: [], isStaple: false });
+    }
+    l.itemId = id;
+  }
 }
 
 async function searchCandidates(retailer: Retailer, name: string, item: Item | null): Promise<Product[]> {

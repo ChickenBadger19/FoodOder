@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api, type Preview, type State } from '../api';
+import { api, dateLabel, dayName, notifyChanged, type Preview, type Slot, type State } from '../api';
 import { Badge, Card, Notice, Primary, Section, Spinner, titleCase } from '../ui';
 
 export function RecipeScreen() {
@@ -10,13 +10,19 @@ export function RecipeScreen() {
   const [state, setState] = useState<State | null>(null);
   const [servings, setServings] = useState(Number(params.get('servings')) || 4);
   const [day] = useState<string | null>(params.get('day') || null);
+  const [date] = useState<string | null>(params.get('date') || null);
+  const [slot] = useState<Slot>((params.get('slot') as Slot) || 'dinner');
   const [eaterIds, setEaterIds] = useState<string[] | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [showSteps, setShowSteps] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.state().then(s => { setState(s); setEaterIds(s.members.filter(m => m.eatsByDefault).map(m => m.id)); });
+    api.state().then(s => {
+      setState(s);
+      const fromUrl = (params.get('eaters') || '').split(',').filter(Boolean).filter(id => s.members.some(m => m.id === id));
+      setEaterIds(fromUrl.length ? fromUrl : s.members.filter(m => m.eatsByDefault).map(m => m.id));
+    });
   }, []);
   useEffect(() => {
     if (!id || !eaterIds) return;
@@ -31,7 +37,7 @@ export function RecipeScreen() {
   const constrained = state.members.filter(m => eaterIds.includes(m.id) && m.constraints.some(c => c.kind !== 'dislike'));
 
   async function addToPlan() {
-    try { await api.addPlan(id!, servings, day, eaterIds!); nav('/'); } catch (e: any) { setError(e.message); }
+    try { await api.addPlan(id!, servings, day, eaterIds!, date ?? undefined, slot); notifyChanged(); nav(date ? '/week' : '/'); } catch (e: any) { setError(e.message); }
   }
 
   return (
@@ -43,7 +49,7 @@ export function RecipeScreen() {
 
       <div>
         <h1 className="text-2xl font-extrabold leading-tight tracking-tight m-0">{preview.recipe.name}</h1>
-        <div className="text-xs font-semibold text-muted">{preview.recipe.source.type === 'llm' ? 'Generated recipe, check it' : preview.recipe.source.type === 'seed' ? 'Saved recipe' : titleCase(preview.recipe.source.type)} · originally serves {preview.recipe.servings}{day ? ` · cooking ${titleCase(day)}` : ''}</div>
+        <div className="text-xs font-semibold text-muted">{preview.recipe.source.type === 'llm' ? 'Generated recipe, check it' : preview.recipe.source.type === 'seed' ? 'Saved recipe' : titleCase(preview.recipe.source.type)} · originally serves {preview.recipe.servings}{date ? ` · ${dayName(date)} ${dateLabel(date)}${slot !== 'dinner' ? ` ${slot}` : ''}` : day ? ` · cooking ${titleCase(day)}` : ''}</div>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -111,7 +117,7 @@ export function RecipeScreen() {
 
       {error && <Notice tone="red">{error}</Notice>}
       <div className="sticky bottom-0 bg-ground pt-2 pb-1 flex flex-col gap-1.5">
-        <Primary onClick={addToPlan}>Add to cook list</Primary>
+        <Primary onClick={addToPlan}>{date ? `Plan for ${dayName(date)}` : 'Add to cook list'}</Primary>
         <div className="text-center text-xs font-semibold text-muted">Nothing is ordered yet</div>
       </div>
     </div>

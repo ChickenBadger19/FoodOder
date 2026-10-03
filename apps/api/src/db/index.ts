@@ -4,7 +4,20 @@ import path from 'node:path';
 import type { Item, Member, ProductPreference, Recipe, StockItem, Substitution } from '@foododer/core';
 
 export interface ListItem { id: string; text: string; itemId: string | null; qty: number | null; addedVia: 'chat' | 'manual' | 'low_stock' | 'out_of'; status: 'open' | 'ordered' | 'done'; createdAt: string; }
-export interface Plan { id: string; recipeId: string; servings: number; day: string | null; eaterIds: string[]; status: 'planned' | 'cooked' | 'cancelled'; createdAt: string; }
+export type Slot = 'breakfast' | 'lunch' | 'dinner';
+export interface Plan {
+  id: string;
+  recipeId: string;
+  servings: number;
+  /** Human label as spoken ("friday"), kept for display. */
+  day: string | null;
+  /** ISO date YYYY-MM-DD the meal is planned for, null = unscheduled. */
+  date: string | null;
+  slot: Slot;
+  eaterIds: string[];
+  status: 'planned' | 'cooked' | 'cancelled';
+  createdAt: string;
+}
 export interface InventoryEvent { id: string; stockId: string | null; itemId: string; delta: number; unit: string; reason: string; at: string; }
 export interface OrderRecord { id: string; retailer: string; status: 'draft' | 'approved' | 'pushed' | 'ordered' | 'delivered'; payload: unknown; createdAt: string; approvedAt: string | null; }
 

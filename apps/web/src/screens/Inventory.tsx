@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, type StockRow } from '../api';
+import { api, CHANGED, type StockRow } from '../api';
 import { Badge, Card, Notice, Pill, Section, Spinner, titleCase } from '../ui';
 
 const LOCATIONS = ['fridge', 'freezer', 'cupboard', 'household'] as const;
@@ -12,7 +12,7 @@ export function InventoryScreen() {
   const [info, setInfo] = useState<string | null>(null);
 
   const reload = () => api.inventory().then(setRows).catch(e => setError(e.message));
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { reload(); window.addEventListener(CHANGED, reload); return () => window.removeEventListener(CHANGED, reload); }, []);
 
   async function add(e: FormEvent) {
     e.preventDefault();

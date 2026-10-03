@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, gbp, type Order, type OrderLine, type Ranked } from '../api';
+import { api, CHANGED, gbp, type Order, type OrderLine, type Ranked } from '../api';
 import { Badge, Card, Notice, Pill, Primary, Section, Spinner } from '../ui';
 
 function DietaryBadge({ r }: { r: Ranked }) {
@@ -30,7 +30,7 @@ function Line({ line, orderId, onChange, locked }: { line: OrderLine; orderId: s
             {c && c.plan.overshoot > 0 ? ` (${Math.round(c.plan.overshoot)}${line.needUnit === 'count' ? '' : ' ' + line.needUnit} over)` : ''}
           </div>
           <div className="flex gap-1.5 flex-wrap">
-            {c?.reasons.filter(r => r === 'your usual' || r === 'bought before').map(r => <Badge key={r}>{r}</Badge>)}
+            {c?.reasons.filter(r => r === 'your usual' || r === 'bought before' || r.endsWith('as you said')).map(r => <Badge key={r} tone={r.endsWith('as you said') ? 'green' : 'muted'}>{r}</Badge>)}
             {c && <DietaryBadge r={c} />}
             {line.forRecipes.length > 0 && <Badge>{line.forRecipes.join(' · ')}</Badge>}
             {line.blocked && <Badge tone="red">blocks approval</Badge>}
@@ -83,6 +83,13 @@ export function BasketScreen() {
     if (id) api.order(id).then(setOrder).catch(e => setError(e.message));
     else api.propose().then(o => nav(`/basket/${o.id}`, { replace: true })).catch(e => setError(e.message));
   }, [id]);
+  // Chat on this screen ("we need freezer bags") appends to the open draft; refresh to show it.
+  useEffect(() => {
+    if (!id) return;
+    const h = () => api.order(id).then(setOrder).catch(() => {});
+    window.addEventListener(CHANGED, h);
+    return () => window.removeEventListener(CHANGED, h);
+  }, [id]);
 
   if (error && !order) return <div className="pt-3"><Notice tone="red">{error}</Notice><Link to="/" className="text-green font-bold text-sm block mt-2">Back</Link></div>;
   if (!order) return <Spinner />;
@@ -110,7 +117,7 @@ export function BasketScreen() {
       </header>
 
       {!locked && <Notice>Draft only. Nothing is in your {d.retailerName} basket until you approve.</Notice>}
-      {d.eaters.length > 0 && <div className="text-xs font-semibold text-muted">Eating: {d.eaters.join(', ')}{d.constraintsSummary.length ? ` · ${d.constraintsSummary.join(', ')}` : ''}</div>}
+      {d.eaters.length > 0 && <div className="text-xs font-semibold text-muted">Meals for {d.eaters.join(', ')}{d.constraintsSummary.length ? ` · ${d.constraintsSummary.join(', ')} applied to the meals they eat` : ''}</div>}
 
       {pushed && (
         <Notice tone="green">

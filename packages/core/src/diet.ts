@@ -42,6 +42,19 @@ export function activeConstraints(eaters: Member[]): ActiveConstraints {
   return { allergens, dislikes, who: eaters.map(m => m.name) };
 }
 
+/** Combine constraints from several meals: strictest wins per allergen, dislikes union. */
+export function mergeActive(list: ActiveConstraints[]): ActiveConstraints {
+  const allergens = new Map<AllergenTag, Strictness>();
+  const dislikes = new Map<string, { strictness: Strictness; who: string[] }>();
+  const who = new Set<string>();
+  for (const a of list) {
+    for (const [tag, s] of a.allergens) { const cur = allergens.get(tag); allergens.set(tag, cur ? stricter(cur, s) : s); }
+    for (const [id, d] of a.dislikes) { const cur = dislikes.get(id); dislikes.set(id, { strictness: cur ? stricter(cur.strictness, d.strictness) : d.strictness, who: [...new Set([...(cur?.who ?? []), ...d.who])] }); }
+    for (const w of a.who) who.add(w);
+  }
+  return { allergens, dislikes, who: [...who] };
+}
+
 export function itemViolations(item: Item, active: ActiveConstraints): AllergenTag[] {
   return item.allergens.filter(a => active.allergens.has(a));
 }

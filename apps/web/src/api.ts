@@ -2,11 +2,12 @@ export type Unit = string;
 
 export interface Member { id: string; name: string; eatsByDefault: boolean; constraints: { kind: string; strictness: string; itemId?: string }[] }
 export interface Item { id: string; name: string; category: string; allergens: string[]; isStaple: boolean; defaultUnit: Unit }
-export interface Plan { id: string; recipeId: string; servings: number; day: string | null; eaterIds: string[]; status: string }
+export type Slot = 'breakfast' | 'lunch' | 'dinner';
+export interface Plan { id: string; recipeId: string; servings: number; day: string | null; date: string | null; slot: Slot; eaterIds: string[]; status: string }
 export interface RecipeSummary { id: string; name: string; servings: number; source: { type: string; ref?: string } }
 export interface ListItem { id: string; text: string; itemId: string | null; qty: number | null; addedVia: string; status: string }
 export interface RetailerInfo { id: string; name: string; modes: string[]; session: { connected: boolean; expiresAt?: string; note?: string } }
-export interface State { members: Member[]; items: Item[]; plans: Plan[]; recipes: RecipeSummary[]; list: ListItem[]; retailers: RetailerInfo[]; household: { defaultServings: number; ownBrandOk: boolean; alwaysAskCategories: string[] }; llm: boolean }
+export interface State { members: Member[]; items: Item[]; plans: Plan[]; recipes: RecipeSummary[]; list: ListItem[]; retailers: RetailerInfo[]; household: { defaultServings: number; ownBrandOk: boolean; alwaysAskCategories: string[] }; meMemberId: string | null; llm: boolean }
 
 export interface Product { retailer: string; id: string; name: string; price: number; packQty: number; packUnit: Unit; packCount?: number; dietary: string[]; allergens: string[]; mayContain: string[]; ownBrand?: boolean; brand?: string }
 export interface Ranked { product: Product; plan: { packs: number; totalQty: number; unit: Unit; overshoot: number }; lineTotal: number; score: number; dietary: { kind: string; allergen?: string; blocks?: boolean }; blocked: boolean; reasons: string[] }
@@ -30,7 +31,9 @@ export const api = {
   state: () => call<State>('GET', '/api/state'),
   ask: (text: string) => call<{ intents: unknown[]; results: any[] }>('POST', '/api/ask', { text }),
   preview: (id: string, servings: number, eaterIds: string[]) => call<Preview>('POST', `/api/recipes/${id}/preview`, { servings, eaterIds }),
-  addPlan: (recipeId: string, servings: number, day: string | null, eaterIds: string[]) => call<Plan>('POST', '/api/plans', { recipeId, servings, day, eaterIds }),
+  addPlan: (recipeId: string, servings: number, day: string | null, eaterIds: string[], date?: string | null, slot?: Slot) => call<Plan>('POST', '/api/plans', { recipeId, servings, day, eaterIds, ...(date !== undefined ? { date } : {}), ...(slot ? { slot } : {}) }),
+  patchPlan: (id: string, change: Partial<Pick<Plan, 'servings' | 'date' | 'slot' | 'eaterIds'>>) => call<Plan>('PATCH', `/api/plans/${id}`, change),
+  week: (weeks = 2) => call<{ start: string; end: string; plans: Plan[]; unscheduled: Plan[] }>('GET', `/api/plans/week?weeks=${weeks}`),
   deletePlan: (id: string) => call('DELETE', `/api/plans/${id}`),
   cooked: (id: string) => call('POST', `/api/plans/${id}/cooked`, {}),
   propose: () => call<Order & { id: string }>('POST', '/api/orders/propose', {}),
@@ -53,3 +56,25 @@ export const api = {
 };
 
 export const gbp = (n: number) => `£${n.toFixed(2)}`;
+
+/** Fired after chat or any screen changes data, so other mounted screens reload. */
+export const CHANGED = 'foododer:changed';
+export const notifyChanged = () => window.dispatchEvent(new CustomEvent(CHANGED));
+
+export function isoToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y!, m! - 1, d! + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+export function dayName(iso: string, style: 'long' | 'short' = 'long'): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', { weekday: style });
+}
+export function dateLabel(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}

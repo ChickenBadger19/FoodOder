@@ -340,6 +340,33 @@ alongside the cook list, and the draft order is built from both.
 - Voice/typing in the PWA and the chat endpoint both accept this; it is the
   simplest intent to recognise and ships in Phase 1.
 
+### 4.8 Planning the week, per person
+
+The cook list is a calendar. Each planned meal has a date, a slot (breakfast,
+lunch, dinner), a portion count and **its own list of eaters**. Constraints
+follow the meal, not the week: Sam's gluten rule applies to Friday's lasagne
+only if Sam is eating it. "Something different for one person" is simply a
+second meal on the same day with one eater, and the basket merges both.
+
+- Week screen: Monday to Sunday, this week and next. Add a saved recipe to a
+  day, toggle who is eating, change portions, mark cooked, remove.
+- Spoken planning: "lasagne on friday without sam", "pancakes for breakfast
+  on sunday just me and alex", "curry for 4 tuesday everyone except sam".
+  Day words resolve to the next matching date; "me" is the household's own
+  member.
+- Portions default to the number of eaters when you name them, otherwise the
+  household default.
+
+### 4.9 Chat from anywhere
+
+A chat button sits on every screen. Anything you say goes through the same
+understanding as the home screen: "we need medium freezer bags" adds a line to
+the running list **and to any basket draft that is still open**, choosing the
+product that matches the size you said. "We're out of milk" zeroes the stock
+and adds it to the list. Items the catalogue has never seen are matched by
+name against the retailer and become catalogue entries once you approve a
+product for them, so next time they match instantly.
+
 ---
 
 ## 5. Data model (Drizzle / SQLite)
@@ -362,8 +389,8 @@ retailer_products      cached product cards keyed (retailer, retailer_product_id
                        pack qty/unit, image, last_seen, dietary_attrs[] (free-from flags),
                        allergens[], may_contain[]
 item_product_prefs     item_id + retailer → retailer_product_id, always_ask
-plans                  "cook list" for a date range: recipe_id, target_servings, status
-plan_eaters            plan_id, member_id  (which constraints apply to this cook)
+plans                  one planned meal: recipe_id, date, slot (breakfast|lunch|dinner), servings,
+                       eater member ids (constraints apply per meal), status (planned|cooked|cancelled)
 orders                 proposed basket for one retailer: retailer, status (draft → approved →
                        pushed → ordered → delivered), lines (item, needed qty, product, qty,
                        price), delivery fee, approved_at
@@ -596,8 +623,8 @@ The repo now contains a working prototype against a mock retailer. See `README.m
 - `packages/retailers`: `Retailer` interface with `modes`, mock catalogue, hand-off helpers.
 - `apps/api`: Fastify + SQLite, seeded household, 7-step end-to-end test of ask → plan → propose →
   blocked line → approve → delivered → cooked.
-- `apps/web`: installable PWA with the five wireframed screens, driven through the whole flow in
-  Chromium.
+- `apps/web`: installable PWA with the wireframed screens plus a Week planner and a chat sheet on
+  every screen, driven through the whole flow in Chromium.
 - Not built yet: real retailer connectors, URL recipe import, barcode scanning, push notifications,
   multi-retailer comparison. The LLM recipe generator is wired but needs an API key.
 

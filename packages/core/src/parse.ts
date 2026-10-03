@@ -133,8 +133,10 @@ export function parseIngredient(rawInput: string): IngredientLine {
 }
 
 /** Find the catalogue item for an ingredient name using names and aliases; tolerant of plurals. */
+const MODIFIERS = new Set(['fresh', 'large', 'small', 'medium', 'big', 'ripe', 'organic', 'free', 'range', 'british', 'extra', 'virgin', 'some', 'more', 'new', 'good', 'nice']);
+
 export function resolveItem(name: string, items: Item[]): Item | null {
-  const n = normaliseName(name);
+  const n = normaliseName(name).replace(/^(?:tins?|cans?|packs?|packets?|jars?|bottles?|bags?|boxes|box|bunch(?:es)?|handfuls?|cloves?|sticks?|slices?) of /, '');
   if (!n) return null;
   const candidates = [n, n.replace(/ies$/, 'y'), n.replace(/es$/, ''), n.replace(/s$/, '')];
   for (const c of candidates) {
@@ -143,11 +145,17 @@ export function resolveItem(name: string, items: Item[]): Item | null {
       if (item.aliases.some(a => normaliseName(a) === c)) return item;
     }
   }
-  // Fallback: an item whose name is contained in the ingredient text, longest first.
+  // Fallback: an item whose name is contained in the text, longest first, as long as the matched words
+  // outnumber the unexplained ones ("medium freezer bags" -> freezer bags; "dishwasher salt" is NOT salt).
+  const textWords = n.split(' ').filter(w => !MODIFIERS.has(w));
   const sorted = [...items].sort((a, b) => b.name.length - a.name.length);
   for (const item of sorted) {
-    const words = [item.name, ...item.aliases].map(normaliseName);
-    if (words.some(w => w.length > 3 && (` ${n} `).includes(` ${w} `))) return item;
+    for (const w of [item.name, ...item.aliases].map(normaliseName)) {
+      if (w.length <= 3 || !(` ${n} `).includes(` ${w} `)) continue;
+      const matched = w.split(' ').length;
+      const extra = textWords.length - textWords.filter(t => w.split(' ').includes(t)).length;
+      if (matched > extra) return item;
+    }
   }
   return null;
 }

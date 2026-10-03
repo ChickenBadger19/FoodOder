@@ -60,6 +60,12 @@ export const ITEMS: Item[] = [
   house({ id: 'bin-bags', name: 'bin bags', aliases: ['bin liners', 'bin liner'], defaultUnit: 'count' }),
   house({ id: 'loo-roll', name: 'toilet roll', aliases: ['loo roll', 'toilet paper', 'toilet tissue'], defaultUnit: 'count' }),
   house({ id: 'washing-up-liquid', name: 'washing up liquid', aliases: ['washing-up liquid', 'fairy liquid'], defaultUnit: 'ml' }),
+  house({ id: 'freezer-bags', name: 'freezer bags', aliases: ['food bags', 'sandwich bags', 'zip bags'], defaultUnit: 'count' }),
+  house({ id: 'kitchen-roll', name: 'kitchen roll', aliases: ['kitchen towel', 'paper towels'], defaultUnit: 'count' }),
+  house({ id: 'cling-film', name: 'cling film', aliases: ['clingfilm'], defaultUnit: 'count' }),
+  house({ id: 'foil', name: 'kitchen foil', aliases: ['foil', 'tin foil', 'aluminium foil'], defaultUnit: 'count' }),
+  house({ id: 'dishwasher-tablets', name: 'dishwasher tablets', aliases: ['dishwasher tabs'], defaultUnit: 'count' }),
+  house({ id: 'sponges', name: 'sponges', aliases: ['sponge scourers', 'scourers'], defaultUnit: 'count' }),
 ];
 
 export const SUBSTITUTIONS: Substitution[] = [
