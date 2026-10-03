@@ -1,0 +1,28 @@
+import { describe, expect, it } from 'vitest';
+import { parseAsk } from '../src/intent.js';
+
+describe('parseAsk', () => {
+  it('splits recipes and list items', () => {
+    const intents = parseAsk('lasagne for 6 on friday, and we need bleach');
+    expect(intents).toEqual([
+      { kind: 'recipe', query: 'lasagne', servings: 6, day: 'friday' },
+      { kind: 'list', item: 'bleach', qty: null },
+    ]);
+  });
+
+  it('handles several recipes and days', () => {
+    const intents = parseAsk('Thai green curry for 4 on saturday and jacket potatoes for 2 sunday');
+    expect(intents[0]).toEqual({ kind: 'recipe', query: 'thai green curry', servings: 4, day: 'saturday' });
+    expect(intents[1]).toEqual({ kind: 'recipe', query: 'jacket potatoes', servings: 2, day: 'sunday' });
+  });
+
+  it('recognises out-of and stock adds', () => {
+    expect(parseAsk("we're out of milk")).toEqual([{ kind: 'out_of', item: 'milk' }]);
+    expect(parseAsk('we have 2 onions')).toEqual([{ kind: 'stock_add', item: 'onions', qty: 2 }]);
+    expect(parseAsk('add 3 bin bags to the list')).toEqual([{ kind: 'list', item: 'bin bags', qty: 3 }]);
+  });
+
+  it('treats "need X for N" as a recipe', () => {
+    expect(parseAsk('need a chilli for 4')).toEqual([{ kind: 'recipe', query: 'chilli', servings: 4, day: null }]);
+  });
+});

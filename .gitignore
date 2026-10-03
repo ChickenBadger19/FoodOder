@@ -1,7 +1,12 @@
 node_modules/
 dist/
+dev-dist/
 .env
 .env.*
+!.env.example
 *.sqlite
+*.sqlite-journal
 *.db
+data/
 .tesco/
+.DS_Store

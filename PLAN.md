@@ -80,6 +80,18 @@ Consequences for the design:
 you complete slot booking and payment in Tesco's own app/site. That gives you
 two approval gates: the one in our app, and Tesco's checkout.
 
+**Research update (Oct 2026):** a full pass over every UK grocer and every
+recipe-to-basket intermediary confirmed the above and sharpened it. See
+`docs/retailer-integration-research.md`. The retailer layer is therefore
+designed as four hand-off tiers, chosen per retailer at runtime:
+
+| Tier | Mechanism | Status |
+|---|---|---|
+| `list` | Paste-ready list for the retailer's multi-search / shopping list | Sanctioned everywhere; always offered |
+| `links` | Deep links to search / product pages, affiliate-taggable | Sanctioned; Amazon can add to cart by URL |
+| `session` | Add to the user's live basket with their own session (companion extension or self-hosted agent) | Grey area; what Mealia, Cherrypick, Remy do; Tesco and Asda block automated login |
+| `partner` | Official retailer or intermediary API | Only Northfork (Sainsbury's) and possibly Samsung Food, by agreement. This is the pitch target. |
+
 ---
 
 ## 3. Architecture
@@ -576,11 +588,30 @@ their first several months of work.
 
 ---
 
-## 11. Immediate next steps
+## 11. Prototype status (built)
 
-1. Agree the open decisions above (or accept the recommendations).
-2. Phase 0 scaffold on this branch.
-3. Spike (one evening): import a real Tesco cookie export via
-   `open-supermarkets`, run a product search and an order-history fetch, and
-   record which cookies/headers were actually needed. This de-risks Phase 2–3
-   before we invest in Phase 1.
+The repo now contains a working prototype against a mock retailer. See `README.md` to run it.
+
+- `packages/core`: parsing, units, scaling, dietary rules, stock check, matching, intents. 34 unit tests.
+- `packages/retailers`: `Retailer` interface with `modes`, mock catalogue, hand-off helpers.
+- `apps/api`: Fastify + SQLite, seeded household, 7-step end-to-end test of ask → plan → propose →
+  blocked line → approve → delivered → cooked.
+- `apps/web`: installable PWA with the five wireframed screens, driven through the whole flow in
+  Chromium.
+- Not built yet: real retailer connectors, URL recipe import, barcode scanning, push notifications,
+  multi-retailer comparison. The LLM recipe generator is wired but needs an API key.
+
+## 12. Immediate next steps
+
+1. Try the prototype on a phone and mark up the wireframes with what feels wrong.
+2. Decide the session-tier shape: companion browser extension (Mealia-style,
+   runs in your browser, nothing stored server-side) vs self-hosted agent with
+   imported cookies. Recommendation: extension, because it is what every
+   surviving UK app does and it keeps sessions on the user's device.
+3. Spike (one evening): a real Tesco product search and order-history fetch
+   through the user's own session, recording which cookies/headers are needed.
+4. URL recipe import (schema.org JSON-LD) so your own recipes come in without
+   an LLM.
+5. Draft the retailer pitch from the angle in the research doc, aimed first at
+   Sainsbury's (already partners through Northfork) and Ocado (already does
+   bespoke add-all links for publishers).
