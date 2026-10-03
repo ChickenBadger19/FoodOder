@@ -14,7 +14,7 @@ export function Card({ children, tone = 'default', className = '' }: { children:
     <ShadCard className={cn(
       tone === 'amber' && 'border-warning',
       tone === 'red' && 'border-destructive',
-      tone === 'dashed' && 'border-dashed bg-card/60 shadow-none',
+      tone === 'dashed' && 'border-dashed bg-transparent',
       className,
     )}>
       {children}
@@ -41,10 +41,10 @@ export function Primary({ children, onClick, disabled = false, tone = 'green', t
 
 export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex justify-between items-baseline">
-        <h2 className="text-[15px] font-extrabold m-0">{title}</h2>
-        {aside && <span className="text-xs font-semibold text-muted-foreground">{aside}</span>}
+    <section className="flex flex-col gap-2.5">
+      <div className="flex justify-between items-baseline rule pb-1.5">
+        <h2 className="font-display text-lg font-extrabold tracking-tight m-0">{title}</h2>
+        {aside && <span className="label-micro text-muted-foreground">{aside}</span>}
       </div>
       {children}
     </section>
@@ -58,7 +58,7 @@ export function Notice({ children, tone = 'muted' }: { children: ReactNode; tone
     red: 'bg-destructive/10 border-transparent text-destructive',
     green: 'bg-primary/10 border-transparent text-primary',
   }[tone];
-  return <div className={cn('text-xs font-semibold rounded-xl px-3 py-2 border', cls)}>{children}</div>;
+  return <div className={cn('text-xs font-medium rounded-md px-3 py-2 border', cls)}>{children}</div>;
 }
 
 export function Spinner() {

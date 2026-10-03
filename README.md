@@ -37,6 +37,15 @@ To skip that and load the demo household (Jeff, Alex, Sam who is coeliac, a stoc
 FOODODER_DEMO=1 pnpm --filter @foododer/api start
 ```
 
+Or with Docker, one command, then open http://localhost:8787 (add `-e FOODODER_DEMO=1` for the demo household):
+
+```bash
+docker build -t foododer . && docker run -p 8787:8787 -v foododer-data:/data foododer
+```
+
+To try it on a phone, open the same address on the phone over your home network and "Add to Home
+Screen". It installs as an app.
+
 For development with hot reload run `pnpm dev:api` and `pnpm dev:web` in two terminals and open
 http://localhost:5173 (the dev server proxies `/api`). The database is created and seeded on first
 start at `apps/api/data/foododer.sqlite`; delete it to reset.
@@ -51,14 +60,17 @@ pnpm test        # core unit tests, retailer tests, API end-to-end flow
 pnpm typecheck
 ```
 
-## UI
+## Design
 
-shadcn/ui components (Radix primitives, class-variance-authority, lucide icons) vendored under
-`apps/web/src/components/ui` because the shadcn registry was unreachable from the build sandbox;
-`components.json` is in place so `npx shadcn add <component>` works where the registry is reachable.
-Palette is deliberately not the default AI look: oat paper, charcoal, one chard-green brand colour,
-paprika for dietary flags, tomato for hard stops, Manrope type. Tokens live in `apps/web/src/index.css`
-with a dark variant.
+The visual direction is "Deli Counter": butcher's paper, ink, brick, mustard labels, Bricolage
+Grotesque and Instrument Sans, hairline rules and squared blocks. The reasoning, the two alternative
+territories, and how a studio would run the design process are in
+[docs/design-direction.md](./docs/design-direction.md); the territories are on the wireframe canvas.
+
+Components are shadcn/ui (Radix primitives, class-variance-authority, lucide icons) vendored under
+`apps/web/src/components/ui` and re-skinned to the territory; tokens live in `apps/web/src/index.css`
+with a dark variant. `components.json` is in place so `npx shadcn add <component>` works. Fonts are
+self-hosted under `apps/web/public/fonts` (SIL Open Font License).
 
 ## Layout
 

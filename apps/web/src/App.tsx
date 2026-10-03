@@ -49,10 +49,10 @@ export function App() {
       </main>
       <ChatSheet />
       {!welcome && (
-        <nav className="grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
+        <nav className="grid grid-cols-5 border-t border-foreground/25 bg-background pb-[env(safe-area-inset-bottom)]">
           {tabs.map(t => (
-            <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => `flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-bold ${isActive ? 'text-primary font-extrabold' : 'text-muted-foreground'}`}>
-              <t.Icon className="size-[22px]" strokeWidth={2} />
+            <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => `flex flex-col items-center justify-center gap-1.5 h-16 label-micro -mt-px border-t-2 ${isActive ? 'text-primary border-primary' : 'text-muted-foreground border-transparent'}`}>
+              <t.Icon className="size-5" strokeWidth={1.8} />
               <span>{t.label}</span>
             </NavLink>
           ))}
